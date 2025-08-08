@@ -15,7 +15,7 @@ export default function NetflixLoader({ onComplete }: NetflixLoaderProps) {
       { duration: 1800, step: 2 }, // Logo with effects - longer to avoid jumps
       { duration: 500, step: 3 }, // Quick fade out - only 0.5s black screen
     ];
-// hi 
+// hi my name is this
     let timeoutId: NodeJS.Timeout;
     let currentStepIndex = 0;
 
