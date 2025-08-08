@@ -1,103 +1,181 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import ProfileCard from './components/ProfileCard';
+import LoadingScreen from './components/LoadingScreen';
+import AddProfileCard from './components/AddProfileCard';
+import NetflixLoader from './components/NetflixLoader';
+
+interface Profile {
+  id: string;
+  name: string;
+  avatar: string;
+  isKidsProfile?: boolean;
+}
+
+const profiles: Profile[] = [
+  {
+    id: '1',
+    name: 'John',
+    avatar: '/avatars/avatar1.png',
+  },
+  {
+    id: '2',
+    name: 'Sarah',
+    avatar: '/avatars/avatar2.png',
+  },
+  {
+    id: '3',
+    name: 'Kids',
+    avatar: '/avatars/kids.png',
+    isKidsProfile: true,
+  },
+  {
+    id: '4',
+    name: 'Guest',
+    avatar: '/avatars/avatar4.png',
+  },
+];
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showLoader, setShowLoader] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Check if this is the first visit in this session
+  useEffect(() => {
+    const hasSeenLoader = sessionStorage.getItem('netflixLoaderSeen');
+    if (!hasSeenLoader) {
+      setShowLoader(true);
+    }
+
+    // Add secret key combination to reset loader (Ctrl+Shift+R)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+        e.preventDefault();
+        resetLoaderState();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleLoaderComplete = () => {
+    setShowLoader(false);
+    sessionStorage.setItem('netflixLoaderSeen', 'true');
+  };
+
+  const handleProfileSelect = (profile: Profile) => {
+    setIsLoading(true);
+    setSelectedProfile(profile);
+    
+    // Simulate loading time (in real app, this would be authentication/data loading)
+    setTimeout(() => {
+      setIsLoading(false);
+      // Here you would typically navigate to the main Netflix interface
+      console.log(`Profile ${profile.name} loaded successfully`);
+      // For demo purposes, we'll just reset after 3 seconds
+      setTimeout(() => {
+        setSelectedProfile(null);
+      }, 3000);
+    }, 2000);
+  };
+
+  const handleAddProfile = () => {
+    console.log('Add profile clicked');
+    // In a real app, this would open a profile creation interface
+  };
+
+  const handleManageProfiles = () => {
+    console.log('Manage profiles clicked');
+    // In a real app, this would open a profile management interface
+  };
+
+  // Function to reset loader state (for testing purposes)
+  const resetLoaderState = () => {
+    sessionStorage.removeItem('netflixLoaderSeen');
+    setShowLoader(true);
+  };
+
+  // Show Netflix loader on first load
+  if (showLoader) {
+    return <NetflixLoader onComplete={handleLoaderComplete} />;
+  }
+
+  if (isLoading && selectedProfile) {
+    return <LoadingScreen profileName={selectedProfile.name} />;
+  }
+
+  if (selectedProfile && !isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-netflix-red text-6xl font-bold mb-8">NETFLIX</h1>
+          <p className="text-white text-2xl">Welcome, {selectedProfile.name}!</p>
+          <p className="text-gray-400 text-lg mt-4">This would be the main Netflix interface...</p>
+          <p className="text-gray-500 text-sm mt-8">Click will return to profile selection in a moment</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black flex items-center justify-center px-4">
+      <div className="w-full max-w-6xl mx-auto text-center">
+        {/* Netflix Logo */}
+        <div className="mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
+          <h1 className="text-netflix-red text-5xl md:text-7xl font-bold tracking-wide">
+            NETFLIX
+          </h1>
+        </div>
+
+        {/* Who's watching heading */}
+        <h2 className="text-white text-4xl md:text-6xl font-light mb-12 md:mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
+          Who&apos;s watching?
+        </h2>
+
+        {/* Profiles Grid */}
+        <div className="flex flex-wrap justify-center gap-8 md:gap-12 lg:gap-16 mb-12 md:mb-16">
+          {profiles.map((profile, index) => (
+            <div
+              key={profile.id}
+              className="animate-fade-in-up opacity-0"
+              style={{ 
+                animationDelay: `${0.5 + index * 0.1}s`, 
+                animationFillMode: 'forwards' 
+              }}
+            >
+              <ProfileCard
+                name={profile.name}
+                avatar={profile.avatar}
+                isKidsProfile={profile.isKidsProfile}
+                onClick={() => handleProfileSelect(profile)}
+              />
+            </div>
+          ))}
+          {profiles.length < 5 && (
+            <div
+              className="animate-fade-in-up opacity-0"
+              style={{ 
+                animationDelay: `${0.5 + profiles.length * 0.1}s`, 
+                animationFillMode: 'forwards' 
+              }}
+            >
+              <AddProfileCard onClick={handleAddProfile} />
+            </div>
+          )}
+        </div>
+
+        {/* Manage Profiles Button */}
+        <button
+          onClick={handleManageProfiles}
+          className="text-gray-400 hover:text-white text-xl md:text-2xl font-light border border-gray-400 hover:border-white px-8 py-4 transition-all duration-200 hover:bg-white hover:bg-opacity-10 animate-fade-in-up opacity-0"
+          style={{ animationDelay: '1.0s', animationFillMode: 'forwards' }}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          Manage Profiles
+        </button>
+      </div>
     </div>
   );
 }
