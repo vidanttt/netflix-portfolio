@@ -1,39 +1,48 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import ProfileCard from './components/ProfileCard';
 import LoadingScreen from './components/LoadingScreen';
-import AddProfileCard from './components/AddProfileCard';
 import NetflixLoader from './components/NetflixLoader';
 
 interface Profile {
   id: string;
   name: string;
   avatar: string;
+  description: string;
+  color: string;
   isKidsProfile?: boolean;
 }
 
 const profiles: Profile[] = [
   {
-    id: '1',
-    name: 'John',
-    avatar: '/avatars/avatar1.png',
+    id: 'developer',
+    name: 'Developer',
+    avatar: '/avatars/developer.png',
+    description: 'Full-Stack Development & Web Technologies',
+    color: 'from-blue-600 to-cyan-600'
   },
   {
-    id: '2',
-    name: 'Sarah',
-    avatar: '/avatars/avatar2.png',
+    id: 'designer',
+    name: 'Designer',
+    avatar: '/avatars/designer.png',
+    description: 'UI/UX Design & Creative Solutions',
+    color: 'from-purple-600 to-pink-600'
   },
   {
-    id: '3',
-    name: 'Kids',
-    avatar: '/avatars/kids.png',
-    isKidsProfile: true,
+    id: 'entrepreneur',
+    name: 'Entrepreneur',
+    avatar: '/avatars/entrepreneur.png',
+    description: 'Business Strategy & Innovation',
+    color: 'from-green-600 to-emerald-600'
   },
   {
-    id: '4',
-    name: 'Guest',
-    avatar: '/avatars/avatar4.png',
+    id: 'creator',
+    name: 'Creator',
+    avatar: '/avatars/creator.png',
+    description: 'Content Creation & Digital Marketing',
+    color: 'from-orange-600 to-red-600'
   },
 ];
 
@@ -41,6 +50,7 @@ export default function Home() {
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
+  const router = useRouter();
 
   // Check if this is the first visit in this session
   useEffect(() => {
@@ -70,26 +80,11 @@ export default function Home() {
     setIsLoading(true);
     setSelectedProfile(profile);
     
-    // Simulate loading time (in real app, this would be authentication/data loading)
+    // Simulate loading time then navigate to the portfolio page
     setTimeout(() => {
       setIsLoading(false);
-      // Here you would typically navigate to the main Netflix interface
-      console.log(`Profile ${profile.name} loaded successfully`);
-      // For demo purposes, we'll just reset after 3 seconds
-      setTimeout(() => {
-        setSelectedProfile(null);
-      }, 3000);
-    }, 2000);
-  };
-
-  const handleAddProfile = () => {
-    console.log('Add profile clicked');
-    // In a real app, this would open a profile creation interface
-  };
-
-  const handleManageProfiles = () => {
-    console.log('Manage profiles clicked');
-    // In a real app, this would open a profile management interface
+      router.push(`/${profile.id}`);
+    }, 1500);
   };
 
   // Function to reset loader state (for testing purposes)
@@ -107,36 +102,23 @@ export default function Home() {
     return <LoadingScreen profileName={selectedProfile.name} />;
   }
 
-  if (selectedProfile && !isLoading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-netflix-red text-6xl font-bold mb-8">NETFLIX</h1>
-          <p className="text-white text-2xl">Welcome, {selectedProfile.name}!</p>
-          <p className="text-gray-400 text-lg mt-4">This would be the main Netflix interface...</p>
-          <p className="text-gray-500 text-sm mt-8">Click will return to profile selection in a moment</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#141414' }}>
       <div className="w-full max-w-6xl mx-auto text-center">
         {/* Netflix Logo */}
-        <div className="mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
+        {/* <div className="mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
           <h1 className="text-netflix-red text-5xl md:text-7xl font-bold tracking-wide">
             NETFLIX
           </h1>
-        </div>
+        </div> */}
 
         {/* Who's watching heading */}
         <h2 className="text-white text-4xl md:text-6xl font-light mb-12 md:mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
-          Who&apos;s watching?
+          Who's Watching?
         </h2>
 
         {/* Profiles Grid */}
-        <div className="flex flex-wrap justify-center gap-8 md:gap-12 lg:gap-16 mb-12 md:mb-16">
+        <div className="flex flex-col md:flex-row justify-center gap-8 md:gap-12 lg:gap-16 mb-12 md:mb-16">
           {profiles.map((profile, index) => (
             <div
               key={profile.id}
@@ -149,32 +131,13 @@ export default function Home() {
               <ProfileCard
                 name={profile.name}
                 avatar={profile.avatar}
-                isKidsProfile={profile.isKidsProfile}
+                description={profile.description}
+                color={profile.color}
                 onClick={() => handleProfileSelect(profile)}
               />
             </div>
           ))}
-          {profiles.length < 5 && (
-            <div
-              className="animate-fade-in-up opacity-0"
-              style={{ 
-                animationDelay: `${0.5 + profiles.length * 0.1}s`, 
-                animationFillMode: 'forwards' 
-              }}
-            >
-              <AddProfileCard onClick={handleAddProfile} />
-            </div>
-          )}
         </div>
-
-        {/* Manage Profiles Button */}
-        <button
-          onClick={handleManageProfiles}
-          className="text-gray-400 hover:text-white text-xl md:text-2xl font-light border border-gray-400 hover:border-white px-8 py-4 transition-all duration-200 hover:bg-white hover:bg-opacity-10 animate-fade-in-up opacity-0"
-          style={{ animationDelay: '1.0s', animationFillMode: 'forwards' }}
-        >
-          Manage Profiles
-        </button>
       </div>
     </div>
   );
