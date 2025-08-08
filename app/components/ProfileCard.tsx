@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 interface ProfileCardProps {
   name: string;
@@ -9,27 +10,6 @@ interface ProfileCardProps {
   color?: string;
   isKidsProfile?: boolean;
   onClick: () => void;
-}
-
-// Portfolio avatar component with gradient backgrounds
-interface PortfolioAvatarProps {
-  name: string;
-  color: string;
-  width?: number;
-  height?: number;
-}
-
-function PortfolioAvatar({ name, color, width = 224, height = 224 }: PortfolioAvatarProps) {
-  return (
-    <div
-      style={{ width: `${width}px`, height: `${height}px` }}
-      className={`bg-gradient-to-br ${color} flex items-center justify-center text-white text-4xl md:text-5xl font-bold relative overflow-hidden`}
-    >
-      {/* Subtle pattern overlay */}
-      <div className="absolute inset-0 opacity-20 bg-gradient-to-tr from-transparent via-white to-transparent"></div>
-      <span className="relative z-10">{name.charAt(0).toUpperCase()}</span>
-    </div>
-  );
 }
 
 export default function ProfileCard({ name, avatar, description, color = 'from-gray-600 to-gray-800', onClick }: ProfileCardProps) {
@@ -46,7 +26,15 @@ export default function ProfileCard({ name, avatar, description, color = 'from-g
         <div className={`rounded-lg overflow-hidden border-2 transition-all duration-300 ${
           isHovered ? 'border-white shadow-2xl shadow-white/20' : 'border-transparent'
         }`}>
-          <PortfolioAvatar name={name} color={color} width={300} height={200} />
+          <div className="w-[300px] h-[200px] relative">
+            <Image
+              src={avatar}
+              alt={`${name} profile`}
+              fill
+              className="object-contain"
+              sizes="300px"
+            />
+          </div>
         </div>
         {/* Premium glow effect on hover */}
         {isHovered && (

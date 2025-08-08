@@ -19,28 +19,28 @@ const profiles: Profile[] = [
   {
     id: 'developer',
     name: 'Developer',
-    avatar: '/avatars/developer.png',
+    avatar: '/blue-profile.png',
     description: 'Full-Stack Development & Web Technologies',
     color: 'from-blue-600 to-cyan-600'
   },
   {
     id: 'designer',
     name: 'Designer',
-    avatar: '/avatars/designer.png',
+    avatar: '/yellow-profile.png',
     description: 'UI/UX Design & Creative Solutions',
     color: 'from-purple-600 to-pink-600'
   },
   {
     id: 'entrepreneur',
     name: 'Entrepreneur',
-    avatar: '/avatars/entrepreneur.png',
+    avatar: '/grey-profile.png',
     description: 'Business Strategy & Innovation',
     color: 'from-green-600 to-emerald-600'
   },
   {
     id: 'creator',
     name: 'Creator',
-    avatar: '/avatars/creator.png',
+    avatar: '/red-profile.png',
     description: 'Content Creation & Digital Marketing',
     color: 'from-orange-600 to-red-600'
   },
