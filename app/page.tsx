@@ -10,7 +10,6 @@ interface Profile {
   id: string;
   name: string;
   avatar: string;
-  description: string;
   color: string;
   isKidsProfile?: boolean;
 }
@@ -20,28 +19,24 @@ const profiles: Profile[] = [
     id: 'developer',
     name: 'Developer',
     avatar: '/blue-profile.png',
-    description: 'Full-Stack Development & Web Technologies',
     color: 'from-blue-600 to-cyan-600'
   },
   {
-    id: 'designer',
-    name: 'Designer',
+    id: 'artist',
+    name: 'Artist',
     avatar: '/yellow-profile.png',
-    description: 'UI/UX Design & Creative Solutions',
     color: 'from-purple-600 to-pink-600'
   },
   {
     id: 'entrepreneur',
     name: 'Entrepreneur',
     avatar: '/grey-profile.png',
-    description: 'Business Strategy & Innovation',
     color: 'from-green-600 to-emerald-600'
   },
   {
     id: 'creator',
     name: 'Creator',
     avatar: '/red-profile.png',
-    description: 'Content Creation & Digital Marketing',
     color: 'from-orange-600 to-red-600'
   },
 ];
@@ -115,6 +110,7 @@ export default function Home() {
         {/* Who's watching heading */}
         <h2 className="text-white text-4xl md:text-6xl font-light mb-12 md:mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
           Who's Watching?
+          
         </h2>
 
         {/* Profiles Grid */}
@@ -131,7 +127,6 @@ export default function Home() {
               <ProfileCard
                 name={profile.name}
                 avatar={profile.avatar}
-                description={profile.description}
                 color={profile.color}
                 onClick={() => handleProfileSelect(profile)}
               />
