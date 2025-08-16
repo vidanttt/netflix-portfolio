@@ -20,7 +20,7 @@ interface DevTerminalProps {
 
 const COMMANDS: Record<string, string> = {
   "/help": `Available commands:\n/help - show this help\n/about - summary\n/projects - list featured projects\n/open <n> - open project by number\n/skills - show core skills\n/experience - show work experience\n/contact - contact info\n/theme dark|light - switch theme (visual)\n/clear - clear the screen`,
-  "/contact": `Contact:\nEmail: your.email@example.com\nGitHub: github.com/yourhandle\nLinkedIn: linkedin.com/in/yourhandle`,
+  "/contact": `Contact:\nEmail: vidantforeal@gmail.com\nGitHub: https://github.com/vidanttt\nLinkedIn: www.linkedin.com/in/vidaant`,
   "/about": `Full-stack developer focused on building performant, accessible web applications with modern tooling.`,
 };
 
@@ -43,8 +43,8 @@ const PROJECTS = [
 
 const SKILLS = {
   Frontend: ["React/Next.js", "TypeScript", "Tailwind", "Accessibility"],
-  Backend: ["Node.js", "Python", "PostgreSQL", "MongoDB"],
-  DevOps: ["Docker", "CI/CD", "AWS/Vercel"],
+  Backend: ["Node.js", "Python"],
+  DevOps: ["AWS/Vercel"],
 };
 
 const EXPERIENCE = [

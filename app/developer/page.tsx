@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import DevTerminal from '../components/DevTerminal';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import DevTerminal from "../components/DevTerminal";
+import Image from "next/image";
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import Lanyard from "../components/Lanyard";
 
 export default function DeveloperPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -18,20 +19,20 @@ export default function DeveloperPage() {
 
   const formatDateTime = (date: Date) => {
     const options: Intl.DateTimeFormatOptions = {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
     };
-    return date.toLocaleDateString('en-US', options);
+    return date.toLocaleDateString("en-US", options);
   };
 
   return (
-  <div className="h-screen bg-black text-green-400 font-mono flex flex-col min-h-0 overflow-hidden">
+    <div className="h-screen bg-black text-green-400 font-mono flex flex-col min-h-0 overflow-hidden">
       {/* Top Navigation */}
       <nav className="flex items-center justify-between px-6 py-3 border-b border-green-500/30 text-sm">
         {/* <div className="flex gap-4 text-green-400">
@@ -42,24 +43,26 @@ export default function DeveloperPage() {
           <Link href="#contact" className="hover:text-cyan-300">contact</Link>
         </div> */}
         <div className="flex flex-col items-end">
-          <span className="text-cyan-300 font-bold" style={{ fontSize: 'calc(1rem + 15px)' }}>vidant</span>
-          <span className="text-green-400 text-xs" style={{ fontSize: 'calc(0.75rem + 15px)' }}>welcome</span>
+          <span
+            className="text-cyan-300 font-bold"
+            style={{ fontSize: "calc(1rem + 15px)" }}
+          >
+            vidant
+          </span>
+          <span
+            className="text-green-400 text-xs"
+            style={{ fontSize: "calc(0.75rem + 15px)" }}
+          >
+            welcome
+          </span>
         </div>
       </nav>
 
       {/* Main Content */}
-  <div className="flex flex-1 min-h-0 h-full overflow-hidden flex-col md:flex-row">
-        {/* Left Column - Lanyard Placeholder */}
-        <div className="w-full md:w-[40%] flex items-center justify-center border-b md:border-b-0 md:border-r border-green-500/20 h-[320px] md:h-full p-4 md:p-0">
-          <div className="relative w-full max-w-[340px] h-full max-h-[420px] bg-gray-900 border border-green-500/30 rounded-md overflow-hidden">
-            {/* Replace this with actual lanyard image */}
-            <Image
-              src="/lanyard-placeholder.png"
-              alt="Lanyard"
-              fill
-              className="object-cover grayscale"
-            />
-          </div>
+      <div className="flex flex-1 min-h-0 h-full overflow-hidden flex-col md:flex-row">
+        {/* Left Column - Lanyard fills entire left side */}
+        <div className="w-full md:w-[40%] border-b md:border-b-0 md:border-r border-green-500/20 h-[320px] md:h-full">
+          <Lanyard position={[0, 0, 20]} gravity={[0, -40, 0]} />
         </div>
 
         {/* Right Column - Dev Terminal */}
