@@ -3,8 +3,33 @@
 import DevTerminal from '../components/DevTerminal';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
 export default function DeveloperPage() {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDateTime = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+
   return (
   <div className="h-screen bg-black text-green-400 font-mono flex flex-col min-h-0 overflow-hidden">
       {/* Top Navigation */}
@@ -44,8 +69,11 @@ export default function DeveloperPage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-green-500/30 px-4 py-2 text-xs text-green-600 flex-shrink-0">
-        &copy; WELCOME TO MY DEN lmao
+      <footer className="border-t border-green-500/30 px-4 py-2 text-xs text-green-600 flex-shrink-0 flex justify-between items-center">
+        <span>&copy; WELCOME TO MY DEN lmao</span>
+        <span className="text-green-400 font-mono">
+          {formatDateTime(currentTime)}
+        </span>
       </footer>
     </div>
   );
