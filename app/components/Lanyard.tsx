@@ -40,7 +40,7 @@ export default function Lanyard({
         camera={{ position, fov }}
         gl={{ alpha: transparent }}
         onCreated={({ gl }) =>
-          gl.setClearColor(new THREE.Color(0x000000), transparent ? 0 : 1)
+          gl.setClearColor(new THREE.Color(0x000000), transparent ? 0 : 0)
         }
       >
         <ambientLight intensity={Math.PI} />
@@ -156,8 +156,8 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
     type: "dynamic" as RigidBodyProps["type"],
     canSleep: true,
     colliders: false,
-    angularDamping: 4,
-    linearDamping: 4,
+    angularDamping: 1.5, // Reduced for more flexibility
+    linearDamping: 1.5, // Reduced for more flexibility
   };
 
   // ✅ Load GLB + texture from /public
@@ -191,10 +191,10 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
     return (): void => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Rope joints - shorter segments for a more realistic lanyard length
-  useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], 0.8]);
-  useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], 0.8]);
-  useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], 0.6]);
+  // Rope joints - shorter string length
+  useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], 0.6]);
+  useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], 0.6]);
+  useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], 0.5]);
   useSphericalJoint(j3, card, [
     [0, 0, 0],
     [0, 1.45, 0],
@@ -249,7 +249,7 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
       }
       ang.copy(card.current.angvel());
       rot.copy(card.current.rotation());
-      card.current.setAngvel({ x: ang.x, y: ang.y - rot.y * 0.25, z: ang.z });
+      card.current.setAngvel({ x: ang.x, y: ang.y - rot.y * 0.1, z: ang.z }); // Reduced rotation damping for more natural movement
     }
   });
 
@@ -281,17 +281,17 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
           {...segmentProps}
           type={"fixed" as RigidBodyProps["type"]}
         />
-        <RigidBody position={[0.3, -0.5, 0]} ref={j1} {...segmentProps}>
+        <RigidBody position={[0.2, -0.3, 0]} ref={j1} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
-        <RigidBody position={[0.6, -1, 0]} ref={j2} {...segmentProps}>
+        <RigidBody position={[0.4, -0.6, 0]} ref={j2} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
-        <RigidBody position={[0.9, -1.5, 0]} ref={j3} {...segmentProps}>
+        <RigidBody position={[0.6, -0.9, 0]} ref={j3} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
         <RigidBody
-          position={[1.2, -2, 0]}
+          position={[0.8, -1.2, 0]}
           ref={card}
           {...segmentProps}
           type={
@@ -303,7 +303,7 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
           {/* Larger collider for better mobile touch interaction */}
           <CuboidCollider args={[1.2, 1.5, 0.1]} />
           <group
-            scale={2.25}
+            scale={isSmall ? 3.0 : 2.25} // Bigger on mobile
             position={[0, -1.2, -0.05]}
             onPointerOver={() => hover(true)}
             onPointerOut={() => hover(false)}
