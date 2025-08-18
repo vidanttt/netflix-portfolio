@@ -16,7 +16,7 @@ import TextPressure from "@/app/TextPressure/TextPressure";
 
 
 
-export function FloatingDockDemo() {
+function FloatingDockDemo() {
   const links = [
     {
       title: "ME",
@@ -143,7 +143,7 @@ export default function Home() {
         alphaParticles={false}
         disableRotation={false}
       />
-      <FloatingDockDemo />
+  {/* <FloatingDockDemo /> removed to fix Next.js page export error */}
 <div
   style={{
     position: 'absolute',
