@@ -222,7 +222,7 @@ export default function DevTerminal({
       return;
     }
 
-    await pushAnimatedLine(`Unknown command: ${cmd}. Type /help`, "mixed");
+    await pushAnimatedLine(`${cmd}. Type /help`, "mixed");
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {

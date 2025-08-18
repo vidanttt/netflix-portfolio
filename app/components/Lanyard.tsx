@@ -35,7 +35,7 @@ export default function Lanyard({
   transparent = true,
 }: LanyardProps) {
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full" style={{ touchAction: "none" }}>
       <Canvas
         camera={{ position, fov }}
         gl={{ alpha: transparent }}
@@ -100,12 +100,16 @@ function SimpleRope({ fixed, j1, j2, j3, card }: any) {
       j3.current &&
       card.current
     ) {
+      // Only go from fixed point to the top of the card (j3), not to the card center
+      const cardTopPosition = new THREE.Vector3().copy(
+        j3.current.translation()
+      );
+
       const newPoints = [
         new THREE.Vector3().copy(fixed.current.translation()),
         new THREE.Vector3().copy(j1.current.translation()),
         new THREE.Vector3().copy(j2.current.translation()),
-        new THREE.Vector3().copy(j3.current.translation()),
-        new THREE.Vector3().copy(card.current.translation()),
+        cardTopPosition, // Stop at the connection point, not the card center
       ];
       setPoints(newPoints);
     }
@@ -187,10 +191,10 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
     return (): void => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Rope joints
-  useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], 1]);
-  useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], 1]);
-  useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], 1]);
+  // Rope joints - shorter segments for a more realistic lanyard length
+  useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], 0.8]);
+  useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], 0.8]);
+  useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], 0.6]);
   useSphericalJoint(j3, card, [
     [0, 0, 0],
     [0, 1.45, 0],
@@ -277,17 +281,17 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
           {...segmentProps}
           type={"fixed" as RigidBodyProps["type"]}
         />
-        <RigidBody position={[0.5, 0, 0]} ref={j1} {...segmentProps}>
+        <RigidBody position={[0.3, -0.5, 0]} ref={j1} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
-        <RigidBody position={[1, 0, 0]} ref={j2} {...segmentProps}>
+        <RigidBody position={[0.6, -1, 0]} ref={j2} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
-        <RigidBody position={[1.5, 0, 0]} ref={j3} {...segmentProps}>
+        <RigidBody position={[0.9, -1.5, 0]} ref={j3} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
         <RigidBody
-          position={[2, 0, 0]}
+          position={[1.2, -2, 0]}
           ref={card}
           {...segmentProps}
           type={
@@ -296,18 +300,19 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
               : ("dynamic" as RigidBodyProps["type"])
           }
         >
-          <CuboidCollider args={[0.8, 1.125, 0.01]} />
+          {/* Larger collider for better mobile touch interaction */}
+          <CuboidCollider args={[1.2, 1.5, 0.1]} />
           <group
             scale={2.25}
             position={[0, -1.2, -0.05]}
             onPointerOver={() => hover(true)}
             onPointerOut={() => hover(false)}
             onPointerUp={(e: any) => {
-              e.target.releasePointerCapture(e.pointerId);
+              e.target.releasePointerCapture?.(e.pointerId);
               drag(false);
             }}
             onPointerDown={(e: any) => {
-              e.target.setPointerCapture(e.pointerId);
+              e.target.setPointerCapture?.(e.pointerId);
               drag(
                 new THREE.Vector3()
                   .copy(e.point)
