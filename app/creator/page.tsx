@@ -143,42 +143,42 @@ export default function Home() {
         alphaParticles={false}
         disableRotation={false}
       />
-  {/* <FloatingDockDemo /> removed to fix Next.js page export error */}
-<div
-  style={{
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '98vw',
-    height: 'auto',
-    minHeight: '10vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    pointerEvents: 'none',
-    zIndex: 10,
-    overflow: 'visible',
-  }}
->
-  <div style={{ pointerEvents: 'auto' }}>
-    <TextPressure
-      text="PORTFOLIO!"
-      flex={true}
-      alpha={false}
-      stroke={false}
-      width={true}
-      weight={true}
-      italic={true}
-      textColor="#ffffff"
-      strokeColor="#ff0000"
-      minFontSize={120}
-      className="!text-[120px]"
-    />
-  </div>
-</div>
+      {/* <FloatingDockDemo /> removed to fix Next.js page export error */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '98vw',
+          height: 'auto',
+          minHeight: '10vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+          zIndex: 10,
+          overflow: 'visible',
+        }}
+      >
+        <div style={{ pointerEvents: 'auto' }}>
+          <TextPressure
+            text="MANYA!"
+            flex={true}
+            alpha={false}
+            stroke={false}
+            width={true}
+            weight={true}
+            italic={true}
+            textColor="#ffffff"
+            strokeColor="#ff0000"
+            minFontSize={120}
+            className="!text-[120px]"
+          />
+        </div>
+      </div>
 
     </div>
 
-    
+
   );
 }
