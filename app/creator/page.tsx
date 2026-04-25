@@ -1,184 +1,525 @@
 'use client';
 
-import Particles from "@/app/Backgrounds/Particles";
-import React from "react";
-import { FloatingDock } from "@/app/components/Floating-Dock";
-import {
-  IconBrandGithub,
-  IconBrandX,
-  IconExchange,
-  IconHome,
-  IconNewSection,
-  IconTerminal2,
-} from "@tabler/icons-react";
-import TextPressure from "@/app/TextPressure/TextPressure";
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
+import Particles from '@/app/Backgrounds/Particles';
+import TextPressure from '@/app/TextPressure/TextPressure';
+import NavBar from './components/NavBar';
+import { HeroParallax } from '@/src/components/ui/hero-parallax';
+import './portfolio.css';
+import TiltedCard from '@/components/TiltedCard';
 
-
-
-
-function FloatingDockDemo() {
-  const links = [
-    {
-      title: "ME",
-      icon: (
-        <IconHome className="h-full w-full text-white" />
-      ),
-      href: "#",
-    },
-    {
-      title: "PROJECTS",
-      icon: (
-        <IconTerminal2 className="h-full w-full text-white" />
-      ),
-      href: "#",
-    },
-    {
-      title: ":/",
-      icon: (
-        <IconNewSection className="h-full w-full text-white" />
-      ),
-      href: "#",
-    },
-    {
-      title: "LINKEDIN",
-      icon: (
-        <img
-          src="https://assets.aceternity.com/logo-dark.png"
-          width={20}
-          height={20}
-          alt="Aceternity Logo"
-        />
-      ),
-      href: "#",
-    },
-    {
-      title: "INSTAGRAM",
-      icon: (
-        <img
-          src="/instagram.png"
-          width={30}
-          height={30}
-          alt="Instagram Logo"
-          style={{ filter: 'brightness(1.5) invert(0)' }}
-        />
-      ),
-      href: "#",
-    },
-    {
-      title: "TWITTER",
-      icon: (
-        <IconBrandX className="h-full w-full text-white" />
-      ),
-      href: "#",
-    },
-    {
-      title: "GITHUB",
-      icon: (
-        <IconBrandGithub className="h-full w-full text-white" />
-      ),
-      href: "#",
-    },
+/* ════════════════════════════════════════════════════
+   ABOUT SECTION
+   ════════════════════════════════════════════════════ */
+function AboutSection() {
+  const skills = [
+    { label: 'Adobe Premiere Pro', dot: 'green' },
+    { label: 'After Effects', dot: 'green' },
+    { label: 'DaVinci Resolve', dot: 'green' },
+    { label: 'CapCut', dot: 'purple' },
+    { label: 'Photoshop', dot: 'purple' },
+    { label: 'Illustrator', dot: 'purple' },
+    { label: 'Final Cut Pro', dot: 'green' },
+    { label: 'Audition', dot: 'purple' },
   ];
+
   return (
-    <div
-      className="flex items-center justify-center w-full"
-      style={{
-        position: 'fixed',
-        left: '3px',
-        right: '3px',
-        bottom: '3px',
-        zIndex: 20,
-        pointerEvents: 'none',
-      }}
-    >
-      <div
-        style={{
-          pointerEvents: 'auto',
-          background: 'rgba(24, 24, 27, 0.85)', // dark grey with opacity
-          borderRadius: '1.5rem',
-          boxShadow: '0 4px 32px 0 rgba(0,0,0,0.25)',
-          padding: '0.5rem 1.25rem',
-          backdropFilter: 'blur(8px)',
-        }}
-      >
-        <FloatingDock
-          mobileClassName="-translate-y-4"
-          items={links}
-        />
+    <section id="about" className="hz-section">
+      {/* Section label */}
+      <p className="hz-section-label">ABOUT ME</p>
+      <h2 className="hz-section-heading">180 HRTZ</h2>
+
+      <div className="hz-about-grid">
+
+        {/* ─ Left: Bio card ─ */}
+        <div className="hz-card">
+          <h3 className="hz-about-bio-title">ABOUT ME</h3>
+          <p className="hz-about-bio-text">
+            I'm <strong style={{ color: 'var(--hz-green)' }}>180 HRTZ</strong> — a video editor
+            and motion designer obsessed with fast cuts, cinematic colour grades, and storytelling
+            that hits different. I work with creators, brands, and studios to turn raw footage into
+            polished visual experiences.
+          </p>
+          <p className="hz-about-bio-text" style={{ marginTop: '1rem' }}>
+            From short-form social content to full production edits, I've refined my craft across
+            multiple niches — music videos, brand campaigns, reels, and documentary-style work.
+          </p>
+          <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span className="hz-tag">VIDEO EDITOR</span>
+            <span className="hz-tag" style={{ borderColor: 'var(--hz-green)', color: 'var(--hz-green)', boxShadow: '0 0 8px var(--hz-green-glow)' }}>
+              MOTION DESIGNER
+            </span>
+          </div>
+        </div>
+
+        {/* ─ Center: Avatar + name ─ */}
+        <div className="hz-about-center">
+          <div className="hz-avatar-ring">
+            <span className="hz-avatar-initials">HZ</span>
+          </div>
+          <p className="hz-name-display">180 HRTZ</p>
+          <p className="hz-name-role">VIDEO EDITOR & MOTION DESIGNER</p>
+
+          {/* Decorative triangle logo */}
+          <svg width="80" height="70" viewBox="0 0 80 70" fill="none" style={{ marginTop: '0.75rem', filter: 'drop-shadow(0 0 12px #39FF14)' }}>
+            <polygon points="40,4 76,66 4,66" stroke="#39FF14" strokeWidth="2.5" fill="rgba(57,255,20,0.05)" />
+            <polygon points="40,20 62,60 18,60" stroke="#9D4EDD" strokeWidth="1.5" fill="rgba(157,78,221,0.05)" />
+          </svg>
+        </div>
+
+        {/* ─ Right: Skills + Contact ─ */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+          {/* Softwares card */}
+          <div className="hz-card">
+            <h4 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1rem',
+              letterSpacing: '0.15em',
+              color: 'var(--hz-green)',
+              marginBottom: '0.85rem',
+              textShadow: '0 0 10px var(--hz-green-glow)',
+            }}>
+              SOFTWARES
+            </h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+              {skills.map((s) => (
+                <span key={s.label} className="hz-skill-badge">
+                  <span className={`hz-skill-dot${s.dot === 'purple' ? ' hz-skill-dot-purple' : ''}`} />
+                  {s.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Contact card */}
+          <div className="hz-card hz-card-purple">
+            <h4 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1rem',
+              letterSpacing: '0.15em',
+              color: 'var(--hz-purple)',
+              marginBottom: '0.85rem',
+              textShadow: '0 0 10px var(--hz-purple-glow)',
+            }}>
+              CONTACT ME
+            </h4>
+            <a href="mailto:hello@180hrtz.com" className="hz-contact-link">
+              <svg className="hz-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              hello@180hrtz.com
+            </a>
+            <a href="#" className="hz-contact-link">
+              <svg className="hz-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+              </svg>
+              @180hrtz
+            </a>
+            <a href="#" className="hz-contact-link" style={{ borderBottom: 'none' }}>
+              <svg className="hz-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58 2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z" />
+                <polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" fill="currentColor" />
+              </svg>
+              YouTube Channel
+            </a>
+          </div>
+
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-export default function Home() {
+/* ════════════════════════════════════════════════════
+   WORK SECTION
+   ════════════════════════════════════════════════════ */
+function WorkSection() {
+  const projects = [
+    { title: 'CINEMATIC REEL 2025', tag: 'SHOWREEL', num: '01', gradient: 'linear-gradient(135deg,#0f2010,#050f08,#0a121a)' },
+    { title: 'BRAND CAMPAIGN CUT', tag: 'COMMERCIAL', num: '02', gradient: 'linear-gradient(135deg,#0a0a1a,#050508,#0f100a)' },
+    { title: 'MUSIC VIDEO EDIT', tag: 'MUSIC', num: '03', gradient: 'linear-gradient(135deg,#1a0a1a,#0a050f,#0f0a0a)' },
+    { title: 'SHORT-FORM SERIES', tag: 'SOCIAL', num: '04', gradient: 'linear-gradient(135deg,#0a1210,#060f0a,#0a0a14)' },
+    { title: 'DOCUMENTARY CUT', tag: 'LONG-FORM', num: '05', gradient: 'linear-gradient(135deg,#0f1a0a,#080f05,#0a0f14)' },
+    { title: 'MOTION GRAPHICS REEL', tag: 'MOTION', num: '06', gradient: 'linear-gradient(135deg,#0a0f1a,#050810,#100a14)' },
+  ];
+
   return (
-    <div
-      style={{
-        width: '100vw',
-        height: '100vh',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        margin: 0,
-        padding: 0,
-        background: '#000000ff', // Tailwind's zinc-900 for a dark grey
-        border: '3px solid white',
-        overflow: 'hidden',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        MozUserSelect: 'none',
-        msUserSelect: 'none',
-        zIndex: 0,
-      }}
-      onContextMenu={(e) => e.preventDefault()}
-      onDragStart={(e) => e.preventDefault()}
-    >
-      <Particles
-        particleColors={['#ffffff', '#ffffff']}
-        particleCount={200}
-        particleSpread={10}
-        speed={0.1}
-        particleBaseSize={100}
-        moveParticlesOnHover={true}
-        alphaParticles={false}
-        disableRotation={false}
-      />
-      {/* <FloatingDockDemo /> removed to fix Next.js page export error */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '98vw',
-          height: 'auto',
-          minHeight: '10vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          pointerEvents: 'none',
-          zIndex: 10,
-          overflow: 'visible',
-        }}
-      >
-        <div style={{ pointerEvents: 'auto' }}>
-          <TextPressure
-            text="MANYA!"
-            flex={true}
-            alpha={false}
-            stroke={false}
-            width={true}
-            weight={true}
-            italic={true}
-            textColor="#ffffff"
-            strokeColor="#ff0000"
-            minFontSize={120}
-            className="!text-[120px]"
-          />
+    <section id="work" className="hz-section">
+      <div className="hz-divider" style={{ marginBottom: '4rem' }} />
+      <p className="hz-section-label">SELECTED PROJECTS</p>
+      <h2 className="hz-section-heading">MY WORK</h2>
+
+      {/* Showreel placeholder */}
+      <div className="hz-reel-wrapper">
+        <div className="hz-reel-placeholder">
+          <div className="hz-reel-play">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#39FF14">
+              <polygon points="5,3 19,12 5,21" />
+            </svg>
+          </div>
+          <span style={{ letterSpacing: '0.25em', fontSize: '0.8rem' }}>
+            — YOUR SHOWREEL GOES HERE —
+          </span>
+          <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>
+            Drop a YouTube embed URL to activate
+          </span>
         </div>
       </div>
 
-    </div>
+      {/* Project grid */}
+      <div className="hz-work-grid">
+        {projects.map((p) => (
+          <div key={p.num} className="hz-project-card">
+            <div className="hz-project-card-bg" style={{ background: p.gradient }} />
+            <span className="hz-project-card-num">{p.num}</span>
+
+            {/* Animated lines overlay */}
+            <svg
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.18 }}
+              viewBox="0 0 400 225" preserveAspectRatio="none"
+            >
+              {[0.2, 0.4, 0.6, 0.8].map((y) => (
+                <line key={y} x1="0" y1={y * 225} x2="400" y2={y * 225} stroke="#39FF14" strokeWidth="0.5" />
+              ))}
+              {[0.25, 0.5, 0.75].map((x) => (
+                <line key={x} x1={x * 400} y1="0" x2={x * 400} y2="225" stroke="#39FF14" strokeWidth="0.5" />
+              ))}
+            </svg>
+
+            {/* Waveform placeholder icon */}
+            <div className="hz-project-placeholder-icon">
+              <svg width="80" height="40" viewBox="0 0 80 40" fill="none">
+                {[8, 16, 20, 12, 30, 14, 22, 18, 10, 26, 8, 16].map((h, i) => (
+                  <rect
+                    key={i}
+                    x={i * 6 + 2}
+                    y={(40 - h) / 2}
+                    width="4"
+                    height={h}
+                    rx="2"
+                    fill="#39FF14"
+                  />
+                ))}
+              </svg>
+            </div>
+
+            <div className="hz-project-card-overlay">
+              <p className="hz-project-card-tag">{p.tag}</p>
+              <p className="hz-project-card-title">{p.title}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   SKILLS SECTION — TiltedCard software showcase
+   ════════════════════════════════════════════════════ */
+function SkillsSection() {
+  const software = [
+    { label: 'After Effects', img: '/ae-card.png', caption: 'Adobe After Effects' },
+    { label: 'Premiere Pro', img: '/pr-card.png', caption: 'Adobe Premiere Pro' },
+    { label: 'DaVinci Resolve', img: '/davinci-card.png', caption: 'DaVinci Resolve' },
+    { label: 'Blender', img: '/blender-card.png', caption: 'Blender 3D' },
+    { label: 'Photoshop', img: '/ps-card.png', caption: 'Adobe Photoshop' },
+  ];
+
+  // const bars = [
+  //   { label: 'Video Editing', pct: '97%', val: 0.97 },
+  //   { label: 'Colour Grading', pct: '92%', val: 0.92 },
+  //   { label: 'Motion Graphics', pct: '85%', val: 0.85 },
+  //   { label: 'Audio Design', pct: '78%', val: 0.78 },
+  //   { label: 'Graphic Design', pct: '80%', val: 0.80 },
+  // ];
+
+  return (
+    <section id="skills" className="hz-section">
+      <div className="hz-divider" style={{ marginBottom: '4rem' }} />
+      <p className="hz-section-label">TOOLS & EXPERTISE</p>
+      <h2 className="hz-section-heading">SKILLS</h2>
+
+      {/* Software TiltedCards — horizontal row */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '2rem',
+        flexWrap: 'wrap',
+        marginBottom: '4rem',
+      }}>
+        {software.map((s) => (
+          <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <TiltedCard
+              imageSrc={s.img}
+              altText={s.label}
+              captionText={s.caption}
+              containerHeight="300px"
+              containerWidth="300px"
+              imageHeight="300px"
+              imageWidth="300px"
+              rotateAmplitude={24}
+              scaleOnHover={1.15}
+              showMobileWarning={false}
+              showTooltip
+              displayOverlayContent
+              overlayContent={
+                <p className="tilted-card-demo-text">
+                  {s.label}
+                </p>
+              }
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Skill bars */}
+      {/* <div className="hz-skill-bar-wrap">
+        {bars.map((b) => (
+          <div key={b.label}>
+            <div className="hz-skill-bar-label">
+              <span>{b.label}</span>
+              <span style={{ color: 'var(--hz-green)' }}>{b.pct}</span>
+            </div>
+            <div className="hz-skill-bar-track">
+              <div className="hz-skill-bar-fill" style={{ width: b.pct }} />
+            </div>
+          </div>
+        ))}
+      </div> */}
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   CONTACT SECTION
+   ════════════════════════════════════════════════════ */
+function ContactSection() {
+  return (
+    <section id="contact" className="hz-contact-section">
+      <div className="hz-divider" style={{ marginBottom: '5rem' }} />
+      <p className="hz-section-label">GET IN TOUCH</p>
+
+      <div className="hz-contact-inner">
+        <div>
+          <h2 className="hz-contact-heading">LET'S CREATE<br />SOMETHING.</h2>
+          <p className="hz-contact-subtext">
+            Open for collaboration, client projects, and creative partnerships.
+            If you've got a vision, let's make it real.
+          </p>
+          <a href="mailto:hello@180hrtz.com" className="hz-contact-email">
+            hello@180hrtz.com
+          </a>
+          <div className="hz-social-links">
+            {['INSTAGRAM', 'YOUTUBE', 'TWITTER', 'BEHANCE'].map((s) => (
+              <a key={s} href="#" className="hz-social-btn">{s}</a>
+            ))}
+          </div>
+        </div>
+
+        <div className="hz-card" style={{ alignSelf: 'center' }}>
+          <h4 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '1rem',
+            letterSpacing: '0.2em',
+            color: 'var(--hz-green)',
+            marginBottom: '1.25rem',
+            textShadow: '0 0 10px var(--hz-green-glow)',
+          }}>
+            QUICK STATS
+          </h4>
+          {[
+            { label: 'Projects Completed', val: '100+' },
+            { label: 'Years of Experience', val: '5+' },
+            { label: 'Clients Worldwide', val: '40+' },
+            { label: 'Hours of Footage Cut', val: '∞' },
+          ].map((s) => (
+            <div key={s.label} style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0',
+              borderBottom: '1px solid rgba(57,255,20,0.07)',
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.85rem',
+            }}>
+              <span style={{ color: 'var(--hz-text-dim)' }}>{s.label}</span>
+              <span style={{ color: 'var(--hz-green)', fontWeight: 600, textShadow: '0 0 8px var(--hz-green-glow)' }}>
+                {s.val}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer bar */}
+      <div className="hz-footer-bar">
+        <span className="hz-footer-copy">© 2025 180 HRTZ — ALL RIGHTS RESERVED</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span className="hz-live-dot" />
+          <span className="hz-footer-copy">AVAILABLE FOR PROJECTS</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════
+   MAIN PAGE ASSEMBLY
+   ════════════════════════════════════════════════════ */
+export default function CreatorPage() {
+  const [statueVisible, setStatueVisible] = useState(true);
+
+  useEffect(() => {
+    const onScroll = () => {
+      // Hide statue once user scrolls past 90% of viewport height
+      setStatueVisible(window.scrollY < window.innerHeight * 0.9);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <>
+      {/* ── Fixed background layers ── */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#050505' }}>
+        <Particles
+          particleColors={['#39FF14', '#9D4EDD', '#ffffff']}
+          particleCount={160}
+          particleSpread={10}
+          speed={0.08}
+          particleBaseSize={80}
+          moveParticlesOnHover={true}
+          alphaParticles={true}
+          disableRotation={false}
+          className="w-full h-full"
+        />
+      </div>
+
+      {/* Neon grid */}
+      <div className="hz-neon-grid" />
+
+      {/* Scanlines */}
+      <div className="hz-scanlines" />
+
+      {/* ── Fixed navbar ── */}
+      <NavBar />
+
+      {/* ── Statue: FIXED at root level (breaks out of hero stacking context)
+              Fades out when user scrolls past hero ── */}
+      <Image
+        src="/hero-statue.png"
+        alt="180 HRTZ"
+        width={900}
+        height={900}
+        className="hz-hero-statue"
+        priority
+        sizes="65vw"
+        style={{
+          opacity: statueVisible ? 1 : 0,
+          transition: 'opacity 0.4s ease',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* ══════════════════════════════════════════════════
+          SCROLLABLE PAGE CONTENT
+          ══════════════════════════════════════════════════ */}
+      <div className="hz-page" style={{ userSelect: 'none' }} onContextMenu={(e) => e.preventDefault()}>
+
+        {/* ────── SECTION 1: HERO ────── */}
+        <section id="hero" className="hz-hero">
+
+          {/* ── Lab scene background image ── */}
+          <Image
+            src="/hero-bg.jpg"
+            alt="Hero background"
+            fill
+            className="hz-hero-bg-img"
+            priority
+            sizes="100vw"
+            style={{ border: 'none', outline: 'none' }}
+          />
+          <div className="hz-hero-bg-overlay" />
 
 
+
+          {/* The massive interactive title */}
+          <div className="hz-hero-title-wrapper hz-title-glow">
+            <TextPressure
+              text="180 HRTZ"
+              flex={true}
+              alpha={false}
+              stroke={false}
+              width={true}
+              weight={true}
+              italic={false}
+              textColor="#ffffff"
+              strokeColor="#aaaaaa"
+              minFontSize={80}
+            />
+          </div>
+
+
+
+
+        </section>
+
+        {/* ────── SECTION 2: ABOUT ────── */}
+        <AboutSection />
+
+        {/* ────── SECTION 3: WORK — Parallax Grid ────── */}
+        <section id="work" style={{ background: 'transparent', position: 'relative' }}>
+          <HeroParallax products={[
+            { title: 'MUSIC VIDEO EDIT', link: '#', thumbnail: '/p1.png' },
+            { title: 'BRAND CAMPAIGN CUT', link: '#', thumbnail: '/p2.png' },
+            { title: 'DOCUMENTARY CUT', link: '#', thumbnail: '/p3.png' },
+            { title: 'MOTION GRAPHICS REEL', link: '#', thumbnail: '/p4.png' },
+            { title: 'SHORT-FORM SERIES', link: '#', thumbnail: '/p5.png' },
+            { title: 'COLOUR GRADE REEL', link: '#', thumbnail: '/p6.png' },
+            { title: 'AERIAL CITY SEQUENCE', link: '#', thumbnail: '/p7.png' },
+            { title: 'FASHION EDITORIAL', link: '#', thumbnail: '/p8.png' },
+            { title: 'VFX TITLE SEQUENCE', link: '#', thumbnail: '/p9.png' },
+            { title: 'SHORT FILM EDIT', link: '#', thumbnail: '/p10.png' },
+            { title: 'CREATOR INTRO PACK', link: '#', thumbnail: '/p11.png' },
+            { title: 'CORPORATE CAMPAIGN', link: '#', thumbnail: '/p12.png' },
+            { title: 'CINEMATIC REEL 2025', link: '#', thumbnail: '/p13.png' },
+            { title: 'TRAVEL DOCUMENTARY', link: '#', thumbnail: '/p14.png' },
+            { title: 'ESPORTS HIGHLIGHTS', link: '#', thumbnail: '/p15.png' },
+          ]} />
+        </section>
+
+        {/* ────── SECTION 4: SKILLS ────── */}
+        <SkillsSection />
+
+        {/* ────── SECTION 5: CONTACT ────── */}
+        <ContactSection />
+      </div>
+      <div>
+
+        <TiltedCard
+          imageSrc="https://i.scdn.co/image/ab67616d0000b273d9985092cd88bffd97653b58"
+          altText="Kendrick Lamar - GNX Album Cover"
+          captionText="Kendrick Lamar - GNX"
+          containerHeight="300px"
+          containerWidth="300px"
+          imageHeight="300px"
+          imageWidth="300px"
+          rotateAmplitude={12}
+          scaleOnHover={1.05}
+          showMobileWarning={false}
+          showTooltip
+          displayOverlayContent
+          overlayContent={
+            <p className="tilted-card-demo-text">
+              Kendrick Lamar - GNX
+            </p>
+          }
+        />
+      </div>
+    </>
   );
 }

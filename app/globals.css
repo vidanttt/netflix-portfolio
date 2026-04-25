@@ -2,53 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+/* == Hide browser scrollbars (scroll still works) == */
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
 :root {
-  --background: #141414;
+  --background: #050505;
   --foreground: #ffffff;
+  --border: rgba(57,255,20,0.15);
+  --ring: rgba(57,255,20,0.3);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  /* Make everything unselectable */
+  font-family: "Helvetica Neue", Arial, sans-serif;
   -webkit-user-select: none;
   -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
-  /* Disable text cursor */
   cursor: default;
 }
 
-/* Prevent image dragging */
 img {
   -webkit-user-drag: none;
-  -khtml-user-drag: none;
-  -moz-user-drag: none;
-  -o-user-drag: none;
   pointer-events: none;
+  border: none !important;
+  outline: none !important;
 }
 
-/* Prevent text highlighting */
+span[style*="box-sizing"],
+img, [data-nimg] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none;
+}
+
+*:focus { outline: none !important; }
+
 * {
   -webkit-user-select: none;
   -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
 }
 
-/* Premium entrance animations */
 @keyframes fade-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(30px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  0%   { opacity: 0; transform: translateY(30px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 .animate-fade-in-up {
   animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
