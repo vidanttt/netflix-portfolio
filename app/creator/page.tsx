@@ -254,7 +254,7 @@ function SkillsSection() {
         marginBottom: '4rem',
       }}>
         {software.map((s) => (
-          <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+          <div key={s.label} className="cursor-target" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
             <TiltedCard
               imageSrc={s.img}
               altText={s.label}
@@ -418,7 +418,7 @@ export default function CreatorPage() {
               Fades out when user scrolls past hero ── */}
       <Image
         src="/hero-statue.png"
-        alt="180 HRTZ"
+        alt="180 HRTZ :)"
         width={900}
         height={900}
         className="hz-hero-statue"
