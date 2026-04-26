@@ -31,7 +31,7 @@ function AboutSection() {
     <section id="about" className="hz-section">
       {/* Section label */}
       <p className="hz-section-label">ABOUT ME</p>
-      <h2 className="hz-section-heading">180 HRTZ</h2>
+      <h2 className="hz-section-heading">VIDAANT</h2>
 
       <div className="hz-about-grid">
 
@@ -39,7 +39,7 @@ function AboutSection() {
         <div className="hz-card">
           <h3 className="hz-about-bio-title">ABOUT ME</h3>
           <p className="hz-about-bio-text">
-            I'm <strong style={{ color: 'var(--hz-green)' }}>180 HRTZ</strong> — a video editor
+            I'm <strong style={{ color: 'var(--hz-green)' }}>Vidant</strong> — a video editor
             and motion designer obsessed with fast cuts, cinematic colour grades, and storytelling
             that hits different. I work with creators, brands, and studios to turn raw footage into
             polished visual experiences.
@@ -59,9 +59,15 @@ function AboutSection() {
         {/* ─ Center: Avatar + name ─ */}
         <div className="hz-about-center">
           <div className="hz-avatar-ring">
-            <span className="hz-avatar-initials">HZ</span>
+            <Image
+              src="/image.png"
+              alt="Vidant Avatar"
+              width={220}
+              height={220}
+              style={{ objectFit: 'cover', width: '100%', height: '100%', borderRadius: '50%' }}
+            />
           </div>
-          <p className="hz-name-display">180 HRTZ</p>
+          <p className="hz-name-display">VIDAANT</p>
           <p className="hz-name-role">VIDEO EDITOR & MOTION DESIGNER</p>
 
           {/* Decorative triangle logo */}
@@ -359,7 +365,7 @@ function ContactSection() {
 
       {/* Footer bar */}
       <div className="hz-footer-bar">
-        <span className="hz-footer-copy">© 2025 180 HRTZ — ALL RIGHTS RESERVED</span>
+        <span className="hz-footer-copy">© 2025 VIDAANT — ALL RIGHTS RESERVED</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span className="hz-live-dot" />
           <span className="hz-footer-copy">AVAILABLE FOR PROJECTS</span>
@@ -449,7 +455,7 @@ export default function CreatorPage() {
 
           {/* ── Lab scene background image ── */}
           <Image
-            src="/hero-bg.jpg"
+            src="/herao-bg.jpg"
             alt="Hero background"
             fill
             className="hz-hero-bg-img"
@@ -464,7 +470,7 @@ export default function CreatorPage() {
           {/* The massive interactive title */}
           <div className="hz-hero-title-wrapper hz-title-glow">
             <TextPressure
-              text="180 HRTZ"
+              text="VIDAANT"
               flex={true}
               alpha={false}
               stroke={false}

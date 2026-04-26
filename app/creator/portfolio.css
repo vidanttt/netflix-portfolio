@@ -125,6 +125,12 @@
   transform: translateY(-55%);
   z-index: 10;
   padding: 0 1.5rem;
+  pointer-events: none; /* Let clicks pass through by default... */
+}
+
+/* ...but enable pointer events on the TextPressure text container so it can be independently hovered! */
+.hz-hero-title-wrapper > * {
+  pointer-events: auto;
 }
 
 /* Text pressure — white with very subtle white glow */
@@ -390,18 +396,21 @@
 }
 
 .hz-avatar-ring {
-  width: 140px;
-  height: 140px;
+  width: 220px;
+  height: 220px;
   border-radius: 50%;
-  border: 2px solid var(--hz-green);
-  box-shadow: 0 0 30px var(--hz-green-glow), 0 0 60px rgba(57, 255, 20, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--hz-card);
   position: relative;
   overflow: hidden;
-  animation: hz-pulse-ring 3s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+  /* The pulse animation was creating conflict with the sizing and cover, optional to keep */
+}
+
+.hz-avatar-ring img {
+  border-radius: 50%;
 }
 
 @keyframes hz-pulse-ring {

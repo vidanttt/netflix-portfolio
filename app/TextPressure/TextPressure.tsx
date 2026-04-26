@@ -58,33 +58,31 @@ const TextPressure: React.FC<TextPressureProps> = ({
     return Math.sqrt(dx * dx + dy * dy);
   };
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    cursorRef.current.x = e.clientX;
+    cursorRef.current.y = e.clientY;
+  };
+
+  const handleMouseLeave = () => {
+    cursorRef.current.x = -99999;
+    cursorRef.current.y = -99999;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    cursorRef.current.x = t.clientX;
+    cursorRef.current.y = t.clientY;
+  };
+
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      cursorRef.current.x = e.clientX;
-      cursorRef.current.y = e.clientY;
-    };
-    const handleTouchMove = (e: TouchEvent) => {
-      const t = e.touches[0];
-      cursorRef.current.x = t.clientX;
-      cursorRef.current.y = t.clientY;
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-
     if (containerRef.current) {
       const { left, top, width, height } =
         containerRef.current.getBoundingClientRect();
       mouseRef.current.x = left + width / 2;
       mouseRef.current.y = top + height / 2;
-      cursorRef.current.x = mouseRef.current.x;
-      cursorRef.current.y = mouseRef.current.y;
+      cursorRef.current.x = -99999;
+      cursorRef.current.y = -99999;
     }
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("touchmove", handleTouchMove);
-    };
   }, []);
 
   const setSize = () => {
@@ -169,6 +167,11 @@ const TextPressure: React.FC<TextPressureProps> = ({
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden bg-transparent"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleMouseLeave}
+      style={{ pointerEvents: 'auto' }}
     >
       <style>{`
         @font-face {
