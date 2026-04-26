@@ -417,17 +417,17 @@ export default function CreatorPage() {
 
       {/* ── Fixed navbar ── */}
       <StaggeredMenu
-        position="right"
+        position="left"
         items={menuItems}
         socialItems={socialItems}
         displaySocials
         displayItemNumbering={true}
-        menuButtonColor="#ffffff"
-        openMenuButtonColor="#000000"
+        menuButtonColor="#ffffffff"
+        openMenuButtonColor="#ffffffff"
         changeMenuColorOnOpen={true}
-        colors={['#1a1a1a', '#050505']}
+        colors={['#B497CF', '#5227FF']}
         logoUrl="/hero-statue.png"
-        accentColor="#39FF14"
+        accentColor="#66ff00ff"
         isFixed={true}
       />
 
