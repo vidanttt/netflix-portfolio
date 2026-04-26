@@ -10,7 +10,8 @@ import './portfolio.css';
 import TiltedCard from '@/components/TiltedCard';
 import TargetCursor from '@/components/TargetCursor';
 import StaggeredMenu from '@/components/StaggeredMenu';
-import FlowingMenu from '@/components/FlowingMenu'
+import FlowingMenu from '@/components/FlowingMenu';
+import ReelCarousel from "./components/ReelCarousel";
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -554,6 +555,20 @@ export default function CreatorPage() {
             { title: 'CINEMATIC REEL 2025', link: '#', thumbnail: '/p13.png' },
             { title: 'TRAVEL DOCUMENTARY', link: '#', thumbnail: '/p14.png' },
             { title: 'ESPORTS HIGHLIGHTS', link: '#', thumbnail: '/p15.png' },
+          ]} />
+        </section>
+
+        {/* ────── SECTION 3.5: REEL CAROUSEL ────── */}
+        <section id="reels" className="hz-section" style={{ paddingTop: '4rem', paddingBottom: '4rem' }}>
+          <div className="hz-divider" style={{ marginBottom: '4rem' }} />
+          <p className="hz-section-label">PORTFOLIO · REELS</p>
+          <h2 className="hz-section-heading">SELECTED WORK</h2>
+          <ReelCarousel videos={[
+            '/vid1.mp4',
+            '/vid2.mp4',
+            '/vid3.mp4',
+            '/vid5.mp4',
+            '/vid6.mp4',
           ]} />
         </section>
 
