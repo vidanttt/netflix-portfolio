@@ -8,6 +8,7 @@ import NavBar from './components/NavBar';
 import { HeroParallax } from '@/src/components/ui/hero-parallax';
 import './portfolio.css';
 import TiltedCard from '@/components/TiltedCard';
+import TargetCursor from '@/components/TargetCursor';
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -105,13 +106,13 @@ function AboutSection() {
             }}>
               CONTACT ME
             </h4>
-            <a href="mailto:hello@180hrtz.com" className="hz-contact-link">
+            <a href="mailto:hello@180hrtz.com" className="hz-contact-link cursor-target">
               <svg className="hz-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
               hello@180hrtz.com
             </a>
-            <a href="#" className="hz-contact-link">
+            <a href="#" className="hz-contact-link cursor-target">
               <svg className="hz-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                 <circle cx="12" cy="12" r="4" />
@@ -119,7 +120,7 @@ function AboutSection() {
               </svg>
               @180hrtz
             </a>
-            <a href="#" className="hz-contact-link" style={{ borderBottom: 'none' }}>
+            <a href="#" className="hz-contact-link cursor-target" style={{ borderBottom: 'none' }}>
               <svg className="hz-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58 2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z" />
                 <polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" fill="currentColor" />
@@ -311,12 +312,12 @@ function ContactSection() {
             Open for collaboration, client projects, and creative partnerships.
             If you've got a vision, let's make it real.
           </p>
-          <a href="mailto:hello@180hrtz.com" className="hz-contact-email">
+          <a href="mailto:hello@180hrtz.com" className="hz-contact-email cursor-target">
             hello@180hrtz.com
           </a>
           <div className="hz-social-links">
             {['INSTAGRAM', 'YOUTUBE', 'TWITTER', 'BEHANCE'].map((s) => (
-              <a key={s} href="#" className="hz-social-btn">{s}</a>
+              <a key={s} href="#" className="hz-social-btn cursor-target">{s}</a>
             ))}
           </div>
         </div>
@@ -384,16 +385,22 @@ export default function CreatorPage() {
 
   return (
     <>
+      <TargetCursor
+        spinDuration={2}
+        hideDefaultCursor
+        parallaxOn
+        hoverDuration={0.2}
+      />
       {/* ── Fixed background layers ── */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#050505' }}>
         <Particles
-          particleColors={['#39FF14', '#9D4EDD', '#ffffff']}
-          particleCount={160}
+          particleColors={['#ffffff']}
+          particleCount={200}
           particleSpread={10}
-          speed={0.08}
-          particleBaseSize={80}
+          speed={0.1}
+          particleBaseSize={100}
           moveParticlesOnHover={true}
-          alphaParticles={true}
+          alphaParticles={false}
           disableRotation={false}
           className="w-full h-full"
         />
@@ -401,7 +408,6 @@ export default function CreatorPage() {
 
       {/* Neon grid */}
       <div className="hz-neon-grid" />
-
       {/* Scanlines */}
       <div className="hz-scanlines" />
 
