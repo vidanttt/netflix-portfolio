@@ -12,6 +12,7 @@ import TargetCursor from '@/components/TargetCursor';
 import StaggeredMenu from '@/components/StaggeredMenu';
 import FlowingMenu from '@/components/FlowingMenu';
 import ReelCarousel from "./components/ReelCarousel";
+import SmoothScroll from "./components/SmoothScroll";
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -417,7 +418,7 @@ export default function CreatorPage() {
   }, []);
 
   return (
-    <>
+    <SmoothScroll>
       <TargetCursor
         spinDuration={2}
         hideDefaultCursor
@@ -601,6 +602,6 @@ export default function CreatorPage() {
           }
         />
       </div> */}
-    </>
+    </SmoothScroll>
   );
 }
