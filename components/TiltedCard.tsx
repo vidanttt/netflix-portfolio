@@ -40,6 +40,7 @@ export default function TiltedCard({
   displayOverlayContent = false
 }: TiltedCardProps) {
   const ref = useRef<HTMLElement>(null);
+  const glareRef = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useSpring(useMotionValue(0), springValues);
@@ -70,6 +71,14 @@ export default function TiltedCard({
     x.set(e.clientX - rect.left);
     y.set(e.clientY - rect.top);
 
+    // Update glare position
+    if (glareRef.current) {
+      const pctX = ((e.clientX - rect.left) / rect.width) * 100;
+      const pctY = ((e.clientY - rect.top) / rect.height) * 100;
+      glareRef.current.style.setProperty('--glare-x', `${pctX}%`);
+      glareRef.current.style.setProperty('--glare-y', `${pctY}%`);
+    }
+
     const velocityY = offsetY - lastY;
     rotateFigcaption.set(-velocityY * 0.6);
     setLastY(offsetY);
@@ -78,6 +87,7 @@ export default function TiltedCard({
   function handleMouseEnter() {
     scale.set(scaleOnHover);
     opacity.set(1);
+    if (glareRef.current) glareRef.current.style.opacity = '1';
   }
 
   function handleMouseLeave() {
@@ -86,6 +96,7 @@ export default function TiltedCard({
     rotateX.set(0);
     rotateY.set(0);
     rotateFigcaption.set(0);
+    if (glareRef.current) glareRef.current.style.opacity = '0';
   }
 
   return (
@@ -123,6 +134,18 @@ export default function TiltedCard({
           style={{
             width: imageWidth,
             height: imageHeight
+          }}
+        />
+
+        {/* Glare shine — follows cursor across the image */}
+        <motion.div
+          className="pointer-events-none absolute top-0 left-0 rounded-[15px] will-change-transform [transform:translateZ(1px)]"
+          style={{
+            width: imageWidth,
+            height: imageHeight,
+            background: `radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 40%, transparent 70%)`,
+            opacity: 0,
+            transition: 'opacity 0.3s ease',
           }}
         />
 

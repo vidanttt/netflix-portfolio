@@ -74,12 +74,16 @@ export default function Home() {
   const handleProfileSelect = (profile: Profile) => {
     setIsLoading(true);
     setSelectedProfile(profile);
-    
-    // Simulate loading time then navigate to the portfolio page
+
+    // Prefetch the route so Next.js loads the JS/data in the background
+    const targetPath = `/${profile.id}`;
+    router.prefetch(targetPath);
+
+    // Navigate after a minimum display time — the LoadingScreen stays
+    // fixed on top (z-99999) so it covers the transition seamlessly.
     setTimeout(() => {
-      setIsLoading(false);
-      router.push(`/${profile.id}`);
-    }, 1500);
+      router.push(targetPath);
+    }, 2000);
   };
 
   // Function to reset loader state (for testing purposes)
