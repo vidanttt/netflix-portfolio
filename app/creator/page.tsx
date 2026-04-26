@@ -10,6 +10,7 @@ import './portfolio.css';
 import TiltedCard from '@/components/TiltedCard';
 import TargetCursor from '@/components/TargetCursor';
 import StaggeredMenu from '@/components/StaggeredMenu';
+import FlowingMenu from '@/components/FlowingMenu'
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -151,7 +152,7 @@ function WorkSection() {
 
   return (
     <section id="work" className="hz-section">
-      <div className="hz-divider" style={{ marginBottom: '4rem' }} />
+      <div className="hz-divider" style={{ marginBottom: '10rem' }} />
       <p className="hz-section-label">SELECTED PROJECTS</p>
       <h2 className="hz-section-heading">MY WORK</h2>
 
@@ -308,13 +309,12 @@ function ContactSection() {
 
       <div className="hz-contact-inner">
         <div>
-          <h2 className="hz-contact-heading">LET'S CREATE<br />SOMETHING.</h2>
+          <h2 className="hz-contact-heading">WANNA CONNECT?</h2>
           <p className="hz-contact-subtext">
-            Open for collaboration, client projects, and creative partnerships.
-            If you've got a vision, let's make it real.
+            Drop me a mail and lets connect :)
           </p>
           <a href="mailto:hello@180hrtz.com" className="hz-contact-email cursor-target">
-            hello@180hrtz.com
+            vidantforeal@gmail.com
           </a>
           <div className="hz-social-links">
             {['INSTAGRAM', 'YOUTUBE', 'TWITTER', 'BEHANCE'].map((s) => (
@@ -323,7 +323,7 @@ function ContactSection() {
           </div>
         </div>
 
-        <div className="hz-card" style={{ alignSelf: 'center' }}>
+        {/* <div className="hz-card" style={{ alignSelf: 'center' }}>
           <h4 style={{
             fontFamily: 'var(--font-display)',
             fontSize: '1rem',
@@ -332,8 +332,8 @@ function ContactSection() {
             marginBottom: '1.25rem',
             textShadow: '0 0 10px var(--hz-green-glow)',
           }}>
-            QUICK STATS
-          </h4>
+            {/* QUICK STATS */}
+        {/* </h4>
           {[
             { label: 'Projects Completed', val: '100+' },
             { label: 'Years of Experience', val: '5+' },
@@ -354,7 +354,7 @@ function ContactSection() {
               </span>
             </div>
           ))}
-        </div>
+        </div> */}
       </div>
 
       {/* Footer bar */}
@@ -386,6 +386,13 @@ const socialItems = [
   { label: 'Behance', link: '#' }
 ];
 
+const statItems = [
+  { link: '#', text: '100+ PROJECTS DELIVERED', image: 'https://picsum.photos/600/400?random=1' },
+  { link: '#', text: '50M+ TOTAL VIEWS', image: 'https://picsum.photos/600/400?random=2' },
+  { link: '#', text: '5+ YEARS EXPERIENCE', image: 'https://picsum.photos/600/400?random=3' },
+  { link: '#', text: 'TIER-1 CREATORS', image: 'https://picsum.photos/600/400?random=4' }
+];
+
 export default function CreatorPage() {
   return (
     <>
@@ -396,9 +403,9 @@ export default function CreatorPage() {
         hoverDuration={0.2}
       />
       {/* ── Fixed background layers ── */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#050505' }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#131313ff' }}>
         <Particles
-          particleColors={['#ffffff']}
+          particleColors={['#ffffffff']}
           particleCount={200}
           particleSpread={10}
           speed={0.1}
@@ -492,7 +499,21 @@ export default function CreatorPage() {
         {/* ────── SECTION 2: ABOUT ────── */}
         <AboutSection />
 
+        {/* ────── SECTION 2.5: QUICK STATS ────── */}
+        <section id="stats" style={{ height: '600px', position: 'relative', width: '100vw' }}>
+          <FlowingMenu
+            items={statItems}
+            speed={15}
+            textColor="#ffffff"
+            bgColor="#111111"
+            marqueeBgColor="#39FF14"
+            marqueeTextColor="#000000"
+            borderColor="#39FF14"
+          />
+        </section>
+
         {/* ────── SECTION 3: WORK — Parallax Grid ────── */}
+        <div className="hz-divider" style={{ marginBottom: '2rem', marginTop: '4rem' }} />
         <section id="work" style={{ background: 'transparent', position: 'relative' }}>
           <HeroParallax products={[
             { title: 'MUSIC VIDEO EDIT', link: '#', thumbnail: '/p1.png' },
@@ -519,7 +540,7 @@ export default function CreatorPage() {
         {/* ────── SECTION 5: CONTACT ────── */}
         <ContactSection />
       </div>
-      <div>
+      {/* <div>
 
         <TiltedCard
           imageSrc="https://i.scdn.co/image/ab67616d0000b273d9985092cd88bffd97653b58"
@@ -540,7 +561,7 @@ export default function CreatorPage() {
             </p>
           }
         />
-      </div>
+      </div> */}
     </>
   );
 }

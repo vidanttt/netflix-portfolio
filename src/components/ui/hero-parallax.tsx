@@ -120,58 +120,79 @@ export const ParallaxHeader = () => {
     <div
       style={{
         maxWidth: "80rem",
-        position: "relative",
-        margin: "0 auto",
+        marginLeft: "auto",   // 👉 pushes everything to right
+        marginRight: "0",     // 👉 removes right gap
         paddingTop: "5rem",
         paddingBottom: "10rem",
         paddingLeft: "1rem",
-        paddingRight: "1rem",
+        paddingRight: "clamp(0.5rem, 2vw, 1.5rem)", // 👉 small responsive edge spacing
         width: "100%",
-        left: 0,
-        top: 0,
       }}
     >
-      <p
-        style={{
-          fontFamily: "'Bebas Neue', 'Arial Black', sans-serif",
-          fontSize: "0.75rem",
-          letterSpacing: "0.45em",
-          color: "#39FF14",
-          textTransform: "uppercase",
-          marginBottom: "0.5rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-        }}
-      >
-        <span style={{ display: "inline-block", width: 28, height: 1, background: "#39FF14", boxShadow: "0 0 6px #39FF14" }} />
-        Selected Projects
-      </p>
-      <h2
-        style={{
-          fontFamily: "'Bebas Neue', 'Arial Black', sans-serif",
-          fontSize: "clamp(3rem, 8vw, 6rem)",
-          color: "#39FF14",
-          letterSpacing: "0.06em",
-          lineHeight: 1,
-          textShadow: "0 0 30px rgba(57,255,20,0.35), 0 0 80px rgba(57,255,20,0.1)",
-          marginBottom: "1.5rem",
-        }}
-      >
-        MY WORK
-      </h2>
-      <p
+      <div
         style={{
           maxWidth: "36rem",
-          fontFamily: "'Inter', 'Segoe UI', sans-serif",
-          fontSize: "0.9rem",
-          lineHeight: 1.75,
-          color: "#7fa870",
+          width: "100%",
+          marginLeft: "auto", // 👉 keeps text block tight to right
+          textAlign: "right",
+          position: "relative",
+          top: "-14rem",
         }}
       >
-        A selection of cinematic edits, brand campaigns, music videos, and motion
-        graphics — crafted frame by frame to tell stories that hit different.
-      </p>
+        <p
+          style={{
+            fontFamily: "'Bebas Neue', 'Arial Black', sans-serif",
+            fontSize: "0.75rem",
+            letterSpacing: "0.45em",
+            color: "#39FF14",
+            textTransform: "uppercase",
+            marginBottom: "0.5rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            justifyContent: "flex-end", // 👉 line + text right aligned
+          }}
+        >
+          Selected Projects
+          <span
+            style={{
+              display: "inline-block",
+              width: 28,
+              height: 1,
+              background: "#39FF14",
+              boxShadow: "0 0 6px #39FF14",
+            }}
+          />
+        </p>
+
+        <h2
+          style={{
+            fontFamily: "'Bebas Neue', 'Arial Black', sans-serif",
+            fontSize: "clamp(3rem, 8vw, 6rem)",
+            color: "#39FF14",
+            letterSpacing: "0.06em",
+            lineHeight: 1,
+            textShadow:
+              "0 0 30px rgba(57,255,20,0.35), 0 0 80px rgba(57,255,20,0.1)",
+            marginBottom: "1.5rem",
+          }}
+        >
+          MY WORK
+        </h2>
+
+        <p
+          style={{
+            maxWidth: "36rem",
+            marginLeft: "auto",
+            fontFamily: "'Inter', 'Segoe UI', sans-serif",
+            fontSize: "0.9rem",
+            lineHeight: 1.75,
+            color: "#7fa870",
+          }}
+        >
+          Some Random Stuff That I Did :/
+        </p>
+      </div>
     </div>
   );
 };
