@@ -564,11 +564,12 @@ export default function CreatorPage() {
           <p className="hz-section-label">PORTFOLIO · REELS</p>
           <h2 className="hz-section-heading">SELECTED WORK</h2>
           <ReelCarousel videos={[
-            '/vid1.mp4',
-            '/vid2.mp4',
-            '/vid3.mp4',
-            '/vid5.mp4',
-            '/vid6.mp4',
+            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777233966/vid1_nc11bz.mp4',
+            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777235213/Vid2_kln2ha.mp4',
+            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777235272/Vid3_ntpwdw.mp4',
+            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777235289/Vid5_d0rs29.mp4',
+            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777234062/vid6_usi9t4.mp4'
+
           ]} />
         </section>
 
