@@ -387,17 +387,6 @@ const socialItems = [
 ];
 
 export default function CreatorPage() {
-  const [statueVisible, setStatueVisible] = useState(true);
-
-  useEffect(() => {
-    const onScroll = () => {
-      // Hide statue once user scrolls past 90% of viewport height
-      setStatueVisible(window.scrollY < window.innerHeight * 0.9);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
   return (
     <>
       <TargetCursor
@@ -442,22 +431,6 @@ export default function CreatorPage() {
         isFixed={true}
       />
 
-      {/* ── Statue: FIXED at root level (breaks out of hero stacking context)
-              Fades out when user scrolls past hero ── */}
-      <Image
-        src="/hero-statue.png"
-        alt="180 HRTZ :)"
-        width={900}
-        height={900}
-        className="hz-hero-statue"
-        priority
-        sizes="65vw"
-        style={{
-          opacity: statueVisible ? 1 : 0,
-          transition: 'opacity 0.4s ease',
-          pointerEvents: 'none',
-        }}
-      />
 
       {/* ══════════════════════════════════════════════════
           SCROLLABLE PAGE CONTENT
@@ -496,6 +469,20 @@ export default function CreatorPage() {
               minFontSize={80}
             />
           </div>
+
+          {/* ── Statue: Absolutely positioned inside hero ── */}
+          <Image
+            src="/hero-statue.png"
+            alt="180 HRTZ :)"
+            width={900}
+            height={900}
+            className="hz-hero-statue"
+            priority
+            sizes="65vw"
+            style={{
+              pointerEvents: 'none',
+            }}
+          />
 
 
 

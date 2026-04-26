@@ -191,7 +191,7 @@
 
 /* ── Statue image: FIXED at root, truly in front of everything ── */
 .hz-hero-statue {
-  position: fixed;
+  position: absolute;
   right: -3%;
   bottom: -2%;
   height: 102vh;
