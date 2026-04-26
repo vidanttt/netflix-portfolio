@@ -4,11 +4,12 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Particles from '@/app/Backgrounds/Particles';
 import TextPressure from '@/app/TextPressure/TextPressure';
-import NavBar from './components/NavBar';
+
 import { HeroParallax } from '@/src/components/ui/hero-parallax';
 import './portfolio.css';
 import TiltedCard from '@/components/TiltedCard';
 import TargetCursor from '@/components/TargetCursor';
+import StaggeredMenu from '@/components/StaggeredMenu';
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -371,6 +372,20 @@ function ContactSection() {
 /* ════════════════════════════════════════════════════
    MAIN PAGE ASSEMBLY
    ════════════════════════════════════════════════════ */
+
+const menuItems = [
+  { label: 'Home', ariaLabel: 'Go to home page', link: '#' },
+  { label: 'About', ariaLabel: 'Learn about us', link: '#about' },
+  { label: 'Work', ariaLabel: 'View our services', link: '#work' },
+  { label: 'Contact', ariaLabel: 'Get in touch', link: '#contact' }
+];
+
+const socialItems = [
+  { label: 'Instagram', link: '#' },
+  { label: 'YouTube', link: '#' },
+  { label: 'Behance', link: '#' }
+];
+
 export default function CreatorPage() {
   const [statueVisible, setStatueVisible] = useState(true);
 
@@ -412,7 +427,20 @@ export default function CreatorPage() {
       <div className="hz-scanlines" />
 
       {/* ── Fixed navbar ── */}
-      <NavBar />
+      <StaggeredMenu
+        position="right"
+        items={menuItems}
+        socialItems={socialItems}
+        displaySocials
+        displayItemNumbering={true}
+        menuButtonColor="#ffffff"
+        openMenuButtonColor="#000000"
+        changeMenuColorOnOpen={true}
+        colors={['#1a1a1a', '#050505']}
+        logoUrl="/hero-statue.png"
+        accentColor="#39FF14"
+        isFixed={true}
+      />
 
       {/* ── Statue: FIXED at root level (breaks out of hero stacking context)
               Fades out when user scrolls past hero ── */}
