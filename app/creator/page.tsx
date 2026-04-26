@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Particles from '@/app/Backgrounds/Particles';
 import TextPressure from '@/app/TextPressure/TextPressure';
@@ -400,6 +400,21 @@ const statItems = [
 ];
 
 export default function CreatorPage() {
+  const statueRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!statueRef.current) return;
+      // Normalize mouse to -1…+1
+      const x = (e.clientX / window.innerWidth - 0.5) * 2;
+      const y = (e.clientY / window.innerHeight - 0.5) * 2;
+      // Move opposite to cursor for parallax depth feel
+      statueRef.current.style.transform = `translate(${x * -30}px, ${y * -20}px)`;
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   return (
     <>
       <TargetCursor
@@ -483,22 +498,24 @@ export default function CreatorPage() {
             />
           </div>
 
-          {/* ── Statue: Absolutely positioned inside hero ── */}
-          <Image
-            src="/hero-statue.png"
-            alt="180 HRTZ :)"
-            width={900}
-            height={900}
-            className="hz-hero-statue"
-            priority
-            sizes="65vw"
-            style={{
-              pointerEvents: 'none',
-            }}
-          />
+          {/* ── Statue: Mouse-parallax wrapper ── */}
+          <div ref={statueRef} className="hz-hero-statue-parallax">
+            <Image
+              src="/hero-statue.png"
+              alt="180 HRTZ :)"
+              width={900}
+              height={900}
+              className="hz-hero-statue"
+              priority
+              sizes="65vw"
+              style={{
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
 
-
-
+          {/* Bottom fade — blends hero into the page below */}
+          <div className="hz-hero-bottom-fade" />
 
         </section>
 

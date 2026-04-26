@@ -125,11 +125,12 @@
   transform: translateY(-55%);
   z-index: 10;
   padding: 0 1.5rem;
-  pointer-events: none; /* Let clicks pass through by default... */
+  pointer-events: none;
+  /* Let clicks pass through by default... */
 }
 
 /* ...but enable pointer events on the TextPressure text container so it can be independently hovered! */
-.hz-hero-title-wrapper > * {
+.hz-hero-title-wrapper>* {
   pointer-events: auto;
 }
 
@@ -195,7 +196,17 @@
   pointer-events: none;
 }
 
-/* ── Statue image: FIXED at root, truly in front of everything ── */
+/* ── Statue parallax wrapper — moves with mouse ── */
+.hz-hero-statue-parallax {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+}
+
+/* ── Statue image: positioned inside parallax wrapper ── */
 .hz-hero-statue {
   position: absolute;
   right: -3%;
@@ -228,6 +239,18 @@
   50% {
     transform: translateY(-12px);
   }
+}
+
+/* ── Hero bottom fade — smooth transition to page below ── */
+.hz-hero-bottom-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to bottom, transparent 0%, #131313 100%);
+  z-index: 4;
+  pointer-events: none;
 }
 
 /* ── Hero bottom bar ── */
