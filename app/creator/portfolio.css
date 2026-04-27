@@ -241,6 +241,22 @@
   }
 }
 
+/* Mobile: bigger statue and shifted up */
+@media (max-width: 768px) {
+  .hz-hero-title-wrapper {
+    top: 38%;
+    transform: translateY(-62%);
+  }
+
+  .hz-hero-statue {
+    right: -25%;
+    bottom: 10%;
+    height: 114vh;
+    max-width: 150vw;
+    object-position: bottom right;
+  }
+}
+
 /* ── Hero bottom fade — smooth transition to page below ── */
 .hz-hero-bottom-fade {
   position: absolute;

@@ -404,6 +404,8 @@ const statItems = [
 
 export default function CreatorPage() {
   const statueRef = useRef<HTMLDivElement>(null);
+  const particlesBgRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
   const [pageReady, setPageReady] = useState(false);
 
   // Wait for the page to be fully loaded (images, videos, etc.)
@@ -419,16 +421,146 @@ export default function CreatorPage() {
   }, []);
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!statueRef.current) return;
-      // Normalize mouse to -1…+1
-      const x = (e.clientX / window.innerWidth - 0.5) * 2;
-      const y = (e.clientY / window.innerHeight - 0.5) * 2;
-      // Move opposite to cursor for parallax depth feel
-      statueRef.current.style.transform = `translate(${x * -30}px, ${y * -20}px)`;
+    let rafId = 0;
+    let targetX = 0;
+    let targetY = 0;
+    let currentX = 0;
+    let currentY = 0;
+    let gyroX = 0;
+    let gyroY = 0;
+    let scrollProgress = 0;
+    let scrollYInfluence = 0;
+
+    const updateScrollProgress = () => {
+      if (heroRef.current) {
+        const rect = heroRef.current.getBoundingClientRect();
+        scrollProgress = Math.max(0, Math.min(1, -rect.top / Math.max(rect.height, 1)));
+      } else {
+        scrollProgress = Math.max(0, Math.min(1, window.scrollY / Math.max(window.innerHeight, 1)));
+      }
+      scrollYInfluence = scrollProgress * -0.35;
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+
+    const resetTransforms = () => {
+      if (statueRef.current) {
+        statueRef.current.style.transform = 'translate(0px, 0px)';
+      }
+      if (particlesBgRef.current) {
+        particlesBgRef.current.style.transform = 'translate(0px, 0px) scale(1)';
+      }
+    };
+
+    const applyTransforms = () => {
+      currentX += (targetX - currentX) * 0.12;
+      currentY += (targetY - currentY) * 0.12;
+
+      const statueScrollOffsetY = isMobile ? scrollProgress * -120 : 0;
+
+      if (statueRef.current) {
+        statueRef.current.style.transform = `translate(${currentX * -30}px, ${currentY * -20 + statueScrollOffsetY}px)`;
+      }
+      if (particlesBgRef.current) {
+        particlesBgRef.current.style.transform = `translate(${currentX * 10}px, ${currentY * 7}px) scale(1.04)`;
+      }
+
+      rafId = requestAnimationFrame(applyTransforms);
+    };
+
+    const setParallaxTarget = (x: number, y: number) => {
+      targetX = Math.max(-1, Math.min(1, x));
+      targetY = Math.max(-1, Math.min(1, y));
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyTransforms);
+      }
+    };
+
+    const updateMobileTarget = () => {
+      // Keep scroll and gyro layered together on mobile.
+      setParallaxTarget(gyroX, gyroY + scrollYInfluence);
+    };
+
+    const isMobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768;
+
+    if (!isMobile) {
+      const handleMouseMove = (e: MouseEvent) => {
+        const x = (e.clientX / window.innerWidth - 0.5) * 2;
+        const y = (e.clientY / window.innerHeight - 0.5) * 2;
+        setParallaxTarget(x, y);
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+        }
+        resetTransforms();
+      };
+    }
+
+    let orientationBound = false;
+
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      const gamma = e.gamma ?? 0;
+      const beta = e.beta ?? 0;
+
+      // Convert raw degrees to a normalized -1..1 range for smooth parallax.
+      gyroX = gamma / 25;
+      gyroY = beta / 35;
+      updateMobileTarget();
+    };
+
+    const handleScroll = () => {
+      updateScrollProgress();
+      updateMobileTarget();
+    };
+
+    const bindOrientation = () => {
+      if (orientationBound) return;
+      orientationBound = true;
+      window.addEventListener('deviceorientation', handleOrientation, true);
+    };
+
+    const tryEnableGyro = async () => {
+      const orientationWithPermission = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+        requestPermission?: () => Promise<'granted' | 'denied'>;
+      };
+
+      if (typeof orientationWithPermission.requestPermission === 'function') {
+        try {
+          const permission = await orientationWithPermission.requestPermission();
+          if (permission === 'granted') {
+            bindOrientation();
+          }
+        } catch {
+          // Ignore permission errors silently; parallax just won't run on gyro-restricted devices.
+        }
+      } else {
+        bindOrientation();
+      }
+    };
+
+    const handleFirstTouch = () => {
+      void tryEnableGyro();
+    };
+
+    updateScrollProgress();
+    updateMobileTarget();
+    void tryEnableGyro();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('touchmove', handleScroll, { passive: true });
+    window.addEventListener('touchstart', handleFirstTouch, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('touchmove', handleScroll);
+      window.removeEventListener('touchstart', handleFirstTouch);
+      window.removeEventListener('deviceorientation', handleOrientation, true);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      resetTransforms();
+    };
   }, []);
 
   return (
@@ -473,7 +605,17 @@ export default function CreatorPage() {
         hoverDuration={0.2}
       />
       {/* ── Fixed background layers ── */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#131313ff' }}>
+      <div
+        ref={particlesBgRef}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          background: '#131313ff',
+          willChange: 'transform',
+          transform: 'translate(0px, 0px) scale(1)',
+        }}
+      >
         <Particles
           particleColors={['#ffffffff']}
           particleCount={200}
@@ -515,11 +657,11 @@ export default function CreatorPage() {
       <div className="hz-page" style={{ userSelect: 'none' }} onContextMenu={(e) => e.preventDefault()}>
 
         {/* ────── SECTION 1: HERO ────── */}
-        <section id="hero" className="hz-hero">
+        <section id="hero" ref={heroRef} className="hz-hero">
 
           {/* ── Lab scene background image ── */}
           <Image
-            src="/herao-bg.jpg"
+            src="/herop-bg.jpg"
             alt="Hero background"
             fill
             className="hz-hero-bg-img"
