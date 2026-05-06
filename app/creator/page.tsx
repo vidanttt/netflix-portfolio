@@ -592,39 +592,7 @@ export default function CreatorPage() {
 
   return (
     <SmoothScroll>
-      {/* Page loading overlay — stays until assets are ready */}
-      {!pageReady && (
-        <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black"
-          style={{ transition: 'opacity 0.6s ease' }}
-        >
-          <div className="text-center">
-            <div className="relative mx-auto mb-6 h-24 w-24">
-              <svg className="h-full w-full" viewBox="0 0 100 100">
-                <circle
-                  cx="50" cy="50" r="44"
-                  fill="none" stroke="rgba(57,255,20,0.15)" strokeWidth="3"
-                />
-                <circle
-                  cx="50" cy="50" r="44"
-                  fill="none" stroke="#39FF14" strokeWidth="3"
-                  strokeLinecap="round" strokeDasharray="70 210"
-                  style={{ animation: 'creator-loader-spin 1s linear infinite' }}
-                />
-              </svg>
-            </div>
-            <p className="text-sm font-light uppercase tracking-[0.3em] text-white/60">
-              Loading
-            </p>
-          </div>
-          <style jsx>{`
-            @keyframes creator-loader-spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
-        </div>
-      )}
+      {/* Loading overlay removed — handled by TransitionProvider */}
       <TargetCursor
         spinDuration={2}
         hideDefaultCursor

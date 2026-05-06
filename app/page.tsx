@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ProfileCard from './components/ProfileCard';
-import LoadingScreen from './components/LoadingScreen';
 import NetflixLoader from './components/NetflixLoader';
+import { usePageTransition } from '@/components/TransitionProvider';
 
 interface Profile {
   id: string;
@@ -42,10 +42,9 @@ const profiles: Profile[] = [
 ];
 
 export default function Home() {
-  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
   const router = useRouter();
+  const { startTransition } = usePageTransition();
 
   // Check if this is the first visit in this session
   useEffect(() => {
@@ -72,18 +71,11 @@ export default function Home() {
   };
 
   const handleProfileSelect = (profile: Profile) => {
-    setIsLoading(true);
-    setSelectedProfile(profile);
+    // 1. Show the loading screen overlay (lives in layout, won't unmount)
+    startTransition();
 
-    // Prefetch the route so Next.js loads the JS/data in the background
-    const targetPath = `/${profile.id}`;
-    router.prefetch(targetPath);
-
-    // Navigate after a minimum display time — the LoadingScreen stays
-    // fixed on top (z-99999) so it covers the transition seamlessly.
-    setTimeout(() => {
-      router.push(targetPath);
-    }, 2000);
+    // 2. Navigate immediately — the page loads behind the overlay
+    router.push(`/${profile.id}`);
   };
 
   // Function to reset loader state (for testing purposes)
@@ -95,10 +87,6 @@ export default function Home() {
   // Show Netflix loader on first load
   if (showLoader) {
     return <NetflixLoader onComplete={handleLoaderComplete} />;
-  }
-
-  if (isLoading && selectedProfile) {
-    return <LoadingScreen profileName={selectedProfile.name} />;
   }
 
   return (
