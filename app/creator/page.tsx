@@ -14,6 +14,7 @@ import FlowingMenu from '@/components/FlowingMenu';
 import ReelCarousel from "./components/ReelCarousel";
 import SmoothScroll from "./components/SmoothScroll";
 import GlareHover from '@/components/GlareHover'
+import BorderGlow from '@/components/BorderGlow'
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -39,25 +40,35 @@ function AboutSection() {
       <div className="hz-about-grid">
 
         {/* ─ Left: Bio card ─ */}
-        <div className="hz-card">
-          <h3 className="hz-about-bio-title">ABOUT ME</h3>
-          <p className="hz-about-bio-text">
-            I'm <strong style={{ color: 'var(--hz-green)' }}>Vidant</strong> — a video editor
-            and motion designer obsessed with fast cuts, cinematic colour grades, and storytelling
-            that hits different. I work with creators, brands, and studios to turn raw footage into
-            polished visual experiences.
-          </p>
-          <p className="hz-about-bio-text" style={{ marginTop: '1rem' }}>
-            From short-form social content to full production edits, I've refined my craft across
-            multiple niches — music videos, brand campaigns, reels, and documentary-style work.
-          </p>
-          <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span className="hz-tag">VIDEO EDITOR</span>
-            <span className="hz-tag" style={{ borderColor: 'var(--hz-green)', color: 'var(--hz-green)', boxShadow: '0 0 8px var(--hz-green-glow)' }}>
-              MOTION DESIGNER
-            </span>
+        <BorderGlow
+          glowColor="270 60 60"
+          colors={['#9D4EDD', '#7B2FBE', '#5a1fa0']}
+          backgroundColor="rgba(12, 8, 18, 0.85)"
+          borderRadius={6}
+          glowIntensity={0.6}
+          glowRadius={30}
+          fillOpacity={0.3}
+        >
+          <div className="hz-card cursor-target" style={{ border: 'none', background: 'transparent' }}>
+            <h3 className="hz-about-bio-title" style={{ color: '#ffffff' }}>ABOUT ME</h3>
+            <p className="hz-about-bio-text" style={{ color: '#d0d0d0' }}>
+              I'm <strong style={{ color: 'var(--hz-green)' }}>Vidant</strong> — a video editor
+              and motion designer obsessed with fast cuts, cinematic colour grades, and storytelling
+              that hits different. I work with creators, brands, and studios to turn raw footage into
+              polished visual experiences.
+            </p>
+            <p className="hz-about-bio-text" style={{ marginTop: '1rem', color: '#d0d0d0' }}>
+              From short-form social content to full production edits, I've refined my craft across
+              multiple niches — music videos, brand campaigns, reels, and documentary-style work.
+            </p>
+            <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span className="hz-tag cursor-target">VIDEO EDITOR</span>
+              <span className="hz-tag cursor-target" style={{ borderColor: 'var(--hz-green)', color: 'var(--hz-green)', boxShadow: '0 0 8px var(--hz-green-glow)' }}>
+                MOTION DESIGNER
+              </span>
+            </div>
           </div>
-        </div>
+        </BorderGlow>
 
         {/* ─ Center: Avatar + name ─ */}
         <div className="hz-about-center">
@@ -70,75 +81,97 @@ function AboutSection() {
               style={{ objectFit: 'cover', width: '100%', height: '100%', borderRadius: '50%' }}
             />
           </div>
-          <p className="hz-name-display">VIDAANT</p>
-          <p className="hz-name-role">VIDEO EDITOR & MOTION DESIGNER</p>
+          <p className="hz-name-display" style={{ color: '#ffffff' }}>VIDAANT</p>
+          <p className="hz-name-role" style={{ color: '#a0a0a0' }}>VIDEO EDITOR & MOTION DESIGNER</p>
 
           {/* Decorative triangle logo */}
-          <svg width="80" height="70" viewBox="0 0 80 70" fill="none" style={{ marginTop: '0.75rem', filter: 'drop-shadow(0 0 12px #39FF14)' }}>
+          {/* <svg width="80" height="70" viewBox="0 0 80 70" fill="none" style={{ marginTop: '0.75rem', filter: 'drop-shadow(0 0 12px #39FF14)' }}>
             <polygon points="40,4 76,66 4,66" stroke="#39FF14" strokeWidth="2.5" fill="rgba(57,255,20,0.05)" />
             <polygon points="40,20 62,60 18,60" stroke="#9D4EDD" strokeWidth="1.5" fill="rgba(157,78,221,0.05)" />
-          </svg>
+          </svg> */}
         </div>
 
         {/* ─ Right: Skills + Contact ─ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
           {/* Softwares card */}
-          <div className="hz-card">
-            <h4 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '1rem',
-              letterSpacing: '0.15em',
-              color: 'var(--hz-green)',
-              marginBottom: '0.85rem',
-              textShadow: '0 0 10px var(--hz-green-glow)',
-            }}>
-              SOFTWARES
-            </h4>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-              {skills.map((s) => (
-                <span key={s.label} className="hz-skill-badge">
-                  <span className={`hz-skill-dot${s.dot === 'purple' ? ' hz-skill-dot-purple' : ''}`} />
-                  {s.label}
-                </span>
-              ))}
+          <BorderGlow
+            glowColor="270 60 60"
+            colors={['#9D4EDD', '#7B2FBE', '#5a1fa0']}
+            backgroundColor="rgba(12, 8, 18, 0.85)"
+            borderRadius={6}
+            glowIntensity={0.6}
+            glowRadius={30}
+            fillOpacity={0.3}
+          >
+            <div className="hz-card cursor-target" style={{ border: 'none', background: 'transparent' }}>
+              <h4 style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '1rem',
+                fontWeight: 800,
+                letterSpacing: '0.15em',
+                color: '#f4f4f5',
+                marginBottom: '0.85rem',
+                textShadow: '0 0 10px rgba(255, 255, 255, 0.3)',
+              }}>
+                SOFTWARES
+              </h4>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+                {skills.map((s) => (
+                  <span key={s.label} className="hz-skill-badge cursor-target" style={{ color: '#e0e0e0' }}>
+                    <span className={`hz-skill-dot${s.dot === 'purple' ? ' hz-skill-dot-purple' : ''}`} />
+                    {s.label}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          </BorderGlow>
 
           {/* Contact card */}
-          <div className="hz-card hz-card-purple">
-            <h4 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '1rem',
-              letterSpacing: '0.15em',
-              color: 'var(--hz-purple)',
-              marginBottom: '0.85rem',
-              textShadow: '0 0 10px var(--hz-purple-glow)',
-            }}>
-              CONTACT ME
-            </h4>
-            <a href="mailto:hello@180hrtz.com" className="hz-contact-link cursor-target">
-              <svg className="hz-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              hello@180hrtz.com
-            </a>
-            <a href="#" className="hz-contact-link cursor-target">
-              <svg className="hz-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                <circle cx="12" cy="12" r="4" />
-                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
-              </svg>
-              @180hrtz
-            </a>
-            <a href="#" className="hz-contact-link cursor-target" style={{ borderBottom: 'none' }}>
-              <svg className="hz-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58 2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z" />
-                <polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" fill="currentColor" />
-              </svg>
-              YouTube Channel
-            </a>
-          </div>
+          <BorderGlow
+            glowColor="270 60 60"
+            colors={['#9D4EDD', '#7B2FBE', '#5a1fa0']}
+            backgroundColor="rgba(12, 8, 18, 0.85)"
+            borderRadius={6}
+            glowIntensity={0.6}
+            glowRadius={30}
+            fillOpacity={0.3}
+          >
+            <div className="hz-card hz-card-purple cursor-target" style={{ border: 'none', background: 'transparent' }}>
+              <h4 style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '1rem',
+                fontWeight: 800,
+                letterSpacing: '0.15em',
+                color: '#f4f4f5',
+                marginBottom: '0.85rem',
+                textShadow: '0 0 10px rgba(255, 255, 255, 0.3)',
+              }}>
+                CONTACT ME
+              </h4>
+              <a href="mailto:hello@180hrtz.com" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
+                <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                hello@180hrtz.com
+              </a>
+              <a href="#" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
+                <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                  <circle cx="12" cy="12" r="4" />
+                  <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+                </svg>
+                @180hrtz
+              </a>
+              <a href="#" className="hz-contact-link cursor-target" style={{ borderBottom: 'none', color: '#d0d0d0' }}>
+                <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58 2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z" />
+                  <polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" fill="currentColor" />
+                </svg>
+                YouTube Channel
+              </a>
+            </div>
+          </BorderGlow>
 
         </div>
       </div>
@@ -185,7 +218,7 @@ function WorkSection() {
       {/* Project grid */}
       <div className="hz-work-grid">
         {projects.map((p) => (
-          <div key={p.num} className="hz-project-card">
+          <div key={p.num} className="hz-project-card cursor-target">
             <div className="hz-project-card-bg" style={{ background: p.gradient }} />
             <span className="hz-project-card-num">{p.num}</span>
 
@@ -257,23 +290,17 @@ function SkillsSection() {
       <h2 className="hz-section-heading">SKILLS</h2>
 
       {/* Software TiltedCards — horizontal row */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '2rem',
-        flexWrap: 'wrap',
-        marginBottom: '4rem',
-      }}>
+      <div className="hz-skills-cards-grid">
         {software.map((s) => (
-          <div key={s.label} className="cursor-target" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+          <div key={s.label} className="cursor-target hz-skill-card-item">
             <TiltedCard
               imageSrc={s.img}
               altText={s.label}
               captionText={s.caption}
-              containerHeight="300px"
-              containerWidth="300px"
-              imageHeight="300px"
-              imageWidth="300px"
+              containerHeight="100%"
+              containerWidth="100%"
+              imageHeight="100%"
+              imageWidth="100%"
               rotateAmplitude={24}
               scaleOnHover={1.15}
               showMobileWarning={false}
@@ -396,10 +423,10 @@ const socialItems = [
 ];
 
 const statItems = [
-  { link: '#', text: '100+ PROJECTS DELIVERED', image: 'https://picsum.photos/600/400?random=1' },
-  { link: '#', text: '50M+ TOTAL VIEWS', image: 'https://picsum.photos/600/400?random=2' },
+  { link: '#', text: '1K+ PROJECTS DELIVERED', image: 'https://picsum.photos/600/400?random=1' },
+  { link: '#', text: '1M+ TOTAL VIEWS', image: 'https://picsum.photos/600/400?random=2' },
   { link: '#', text: '5+ YEARS EXPERIENCE', image: 'https://picsum.photos/600/400?random=3' },
-  { link: '#', text: 'TIER-1 CREATORS', image: 'https://picsum.photos/600/400?random=4' }
+  { link: '#', text: 'upcoming TOP Creators', image: 'https://picsum.photos/600/400?random=4' }
 ];
 
 export default function CreatorPage() {
@@ -659,17 +686,7 @@ export default function CreatorPage() {
         {/* ────── SECTION 1: HERO ────── */}
         <section id="hero" ref={heroRef} className="hz-hero">
 
-          {/* ── Lab scene background image ── */}
-          <Image
-            src="/herop-bg.jpg"
-            alt="Hero background"
-            fill
-            className="hz-hero-bg-img"
-            priority
-            sizes="100vw"
-            style={{ border: 'none', outline: 'none' }}
-          />
-          <div className="hz-hero-bg-overlay" />
+
 
 
 
@@ -714,13 +731,13 @@ export default function CreatorPage() {
         <AboutSection />
 
         {/* ────── SECTION 2.5: QUICK STATS ────── */}
-        <section id="stats" style={{ height: '600px', position: 'relative', width: '100vw' }}>
+        <section id="stats" className="hz-stats-section" style={{ position: 'relative', width: '100vw' }}>
           <FlowingMenu
             items={statItems}
             speed={15}
             textColor="#ffffff"
             bgColor="#111111"
-            marqueeBgColor="#39FF14"
+            marqueeBgColor="#ffffffff"
             marqueeTextColor="#000000"
             borderColor="#39FF14"
           />
@@ -729,27 +746,30 @@ export default function CreatorPage() {
         {/* ────── SECTION 3: WORK — Parallax Grid ────── */}
         <div className="hz-divider" style={{ marginBottom: '2rem', marginTop: '4rem' }} />
         <section id="work" style={{ background: 'transparent', position: 'relative' }}>
-          <HeroParallax products={[
-            { title: 'MUSIC VIDEO EDIT', link: '#', thumbnail: '/p1.png' },
-            { title: 'BRAND CAMPAIGN CUT', link: '#', thumbnail: '/p2.png' },
-            { title: 'DOCUMENTARY CUT', link: '#', thumbnail: '/p3.png' },
-            { title: 'MOTION GRAPHICS REEL', link: '#', thumbnail: '/p4.png' },
-            { title: 'SHORT-FORM SERIES', link: '#', thumbnail: '/p5.png' },
-            { title: 'COLOUR GRADE REEL', link: '#', thumbnail: '/p6.png' },
-            { title: 'AERIAL CITY SEQUENCE', link: '#', thumbnail: '/p7.png' },
-            { title: 'FASHION EDITORIAL', link: '#', thumbnail: '/p8.png' },
-            { title: 'VFX TITLE SEQUENCE', link: '#', thumbnail: '/p9.png' },
-            { title: 'SHORT FILM EDIT', link: '#', thumbnail: '/p10.png' },
-            { title: 'CREATOR INTRO PACK', link: '#', thumbnail: '/p11.png' },
-            { title: 'CORPORATE CAMPAIGN', link: '#', thumbnail: '/p12.png' },
-            { title: 'CINEMATIC REEL 2025', link: '#', thumbnail: '/p13.png' },
-            { title: 'TRAVEL DOCUMENTARY', link: '#', thumbnail: '/p14.png' },
-            { title: 'ESPORTS HIGHLIGHTS', link: '#', thumbnail: '/p15.png' },
+          <HeroParallax channels={[
+            // Row 1
+            { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
+            { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
+            { title: 'Vibhors Verse', channelUrl: 'https://www.youtube.com/@vibhorsverse8535' },
+            { title: 'Doctor Narcos', channelUrl: 'https://www.youtube.com/@DoctorNarcos/shorts' },
+            { title: 'Peach Gaming', channelUrl: 'https://www.youtube.com/@PeachGaming' },
+            // Row 2
+            { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
+            { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
+            { title: 'Vibhors Verse', channelUrl: 'https://www.youtube.com/@vibhorsverse8535' },
+            { title: 'Doctor Narcos', channelUrl: 'https://www.youtube.com/@DoctorNarcos/shorts' },
+            { title: 'Peach Gaming', channelUrl: 'https://www.youtube.com/@PeachGaming' },
+            // Row 3
+            { title: 'Vibhors Verse', channelUrl: 'https://www.youtube.com/@vibhorsverse8535' },
+            { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
+            { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
+            { title: 'Peach Gaming', channelUrl: 'https://www.youtube.com/@PeachGaming' },
+            { title: 'Doctor Narcos', channelUrl: 'https://www.youtube.com/@DoctorNarcos/shorts' },
           ]} />
         </section>
 
         {/* ────── SECTION 3.5: REEL CAROUSEL ────── */}
-        <section id="reels" className="hz-section" style={{ paddingTop: '4rem', paddingBottom: '4rem' }}>
+        <section id="reels" className="hz-section" style={{ paddingTop: '4rem', paddingBottom: '4rem', marginTop: '-40vh' }}>
           <div className="hz-divider" style={{ marginBottom: '4rem' }} />
           <p className="hz-section-label">PORTFOLIO · REELS</p>
           <h2 className="hz-section-heading">SELECTED WORK</h2>

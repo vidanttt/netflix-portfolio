@@ -1,6 +1,15 @@
 /* ── Google Fonts ── */
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Instrument+Serif:ital@0;1&family=League+Spartan:wght@100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
+/* ── Local font: Geist Mono (variable) ── */
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/Geist_Mono/GeistMono-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ============================================================
    180 HRTZ — Portfolio Design System
    Color palette: neon green (#39FF14), black (#050505), purple (#9D4EDD)
@@ -23,7 +32,8 @@
   --hz-text: #e8f5e0;
   --hz-text-dim: #7fa870;
   --font-display: 'Anton', sans-serif;
-  --font-body: 'Poppins', sans-serif;
+  --font-mono: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-body: 'Geist Mono', 'Poppins', sans-serif;
 }
 
 
@@ -354,12 +364,13 @@
 }
 
 .hz-section-heading {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: clamp(3rem, 8vw, 6rem);
-  color: var(--hz-green);
+  font-weight: 800;
+  color: #f4f4f5;
   letter-spacing: 0.06em;
   line-height: 1;
-  text-shadow: 0 0 30px var(--hz-green-glow), 0 0 80px rgba(57, 255, 20, 0.1);
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.4), 0 0 50px rgba(255, 255, 255, 0.1);
   margin-bottom: 3rem;
 }
 
@@ -412,12 +423,13 @@
 }
 
 .hz-about-bio-title {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 1.5rem;
-  color: var(--hz-green);
+  font-weight: 800;
+  color: #f4f4f5;
   letter-spacing: 0.1em;
   margin-bottom: 0.75rem;
-  text-shadow: 0 0 12px var(--hz-green-glow);
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
 }
 
 .hz-about-bio-text {
@@ -792,12 +804,13 @@
 }
 
 .hz-contact-heading {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: clamp(2.5rem, 6vw, 5rem);
-  color: var(--hz-green);
+  font-weight: 800;
+  color: #f4f4f5;
   line-height: 1;
   letter-spacing: 0.06em;
-  text-shadow: 0 0 30px var(--hz-green-glow);
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.4), 0 0 50px rgba(255, 255, 255, 0.1);
 }
 
 .hz-contact-subtext {
@@ -986,9 +999,178 @@
 }
 
 /* ============================
+   STATS SECTION
+   ============================ */
+.hz-stats-section {
+  height: 600px;
+}
+
+/* ============================
+   SKILLS CARDS GRID
+   ============================ */
+.hz-skills-cards-grid {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 4rem;
+}
+
+.hz-skill-card-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 300px;
+  height: 300px;
+}
+
+/* ============================
+   MOBILE RESPONSIVE OVERRIDES
+   (does NOT touch the hero section)
+   ============================ */
+@media (max-width: 768px) {
+
+  /* ── General sections ── */
+  .hz-section {
+    padding: 3rem 1.25rem;
+  }
+
+  .hz-section-heading {
+    font-size: clamp(2rem, 10vw, 3.5rem);
+    margin-bottom: 1.75rem;
+  }
+
+  .hz-section-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
+  }
+
+  .hz-divider {
+    margin: 0 1rem;
+  }
+
+  /* ── About section ── */
+  .hz-about-grid {
+    gap: 1rem;
+  }
+
+  .hz-card {
+    padding: 1.25rem;
+  }
+
+  .hz-about-bio-title {
+    font-size: 1.2rem;
+  }
+
+  .hz-about-bio-text {
+    font-size: 0.8rem;
+    line-height: 1.65;
+  }
+
+  .hz-avatar-ring {
+    width: 160px;
+    height: 160px;
+  }
+
+  .hz-name-display {
+    font-size: 1.25rem;
+  }
+
+  .hz-name-role {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+  }
+
+  .hz-skill-badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.55rem;
+  }
+
+  /* ── Stats / FlowingMenu section ── */
+  .hz-stats-section {
+    height: 360px;
+  }
+
+  .hz-stats-section a {
+    font-size: 2.5vh !important;
+  }
+
+  .hz-stats-section .marquee-part span {
+    font-size: 2.5vh !important;
+  }
+
+  .hz-stats-section .marquee-part div {
+    width: 120px !important;
+    height: 4vh !important;
+    margin: 1em 1.5vw !important;
+    border-radius: 30px !important;
+  }
+
+  /* ── Skills section ── */
+  .hz-skills-cards-grid {
+    gap: 1rem;
+  }
+
+  .hz-skill-card-item {
+    width: 140px;
+    height: 140px;
+  }
+
+  .tilted-card-demo-text {
+    font-size: 0.6rem;
+    padding: 0.35rem 0.7rem;
+    margin: 0.4rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Contact section ── */
+  .hz-contact-section {
+    padding: 3rem 1.25rem 2.5rem;
+  }
+
+  .hz-contact-heading {
+    font-size: clamp(1.8rem, 8vw, 3rem);
+  }
+
+  .hz-contact-subtext {
+    font-size: 0.8rem;
+  }
+
+  .hz-contact-email {
+    font-size: 1rem;
+  }
+
+  .hz-social-links {
+    gap: 0.6rem;
+  }
+
+  .hz-social-btn {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.7rem;
+  }
+
+  .hz-footer-bar {
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+    margin-top: 2.5rem;
+  }
+
+  .hz-footer-copy {
+    font-size: 0.65rem;
+  }
+}
+
+/* ============================
    SKELETON SHIMMER
    ============================ */
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }

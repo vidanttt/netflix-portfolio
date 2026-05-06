@@ -89,6 +89,19 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       }
       const strength = activeStrengthRef.current.current;
       if (strength === 0) return;
+
+      // Live-recalculate corner positions each frame to track scrolling
+      if (activeTarget) {
+        const rect = (activeTarget as HTMLElement).getBoundingClientRect();
+        const { borderWidth, cornerSize } = constants;
+        targetCornerPositionsRef.current = [
+          { x: rect.left - borderWidth, y: rect.top - borderWidth },
+          { x: rect.right + borderWidth - cornerSize, y: rect.top - borderWidth },
+          { x: rect.right + borderWidth - cornerSize, y: rect.bottom + borderWidth - cornerSize },
+          { x: rect.left - borderWidth, y: rect.bottom + borderWidth - cornerSize }
+        ];
+      }
+
       const cursorX = gsap.getProperty(cursorRef.current, 'x') as number;
       const cursorY = gsap.getProperty(cursorRef.current, 'y') as number;
       const corners = Array.from(cornersRef.current);
@@ -117,6 +130,19 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
 
     const scrollHandler = () => {
       if (!activeTarget || !cursorRef.current) return;
+
+      // Recalculate corner positions as the target moves during scroll
+      if (isActiveRef.current && targetCornerPositionsRef.current) {
+        const rect = (activeTarget as HTMLElement).getBoundingClientRect();
+        const { borderWidth, cornerSize } = constants;
+        targetCornerPositionsRef.current = [
+          { x: rect.left - borderWidth, y: rect.top - borderWidth },
+          { x: rect.right + borderWidth - cornerSize, y: rect.top - borderWidth },
+          { x: rect.right + borderWidth - cornerSize, y: rect.bottom + borderWidth - cornerSize },
+          { x: rect.left - borderWidth, y: rect.bottom + borderWidth - cornerSize }
+        ];
+      }
+
       const mouseX = gsap.getProperty(cursorRef.current, 'x') as number;
       const mouseY = gsap.getProperty(cursorRef.current, 'y') as number;
       const elementUnderMouse = document.elementFromPoint(mouseX, mouseY);

@@ -5,6 +5,14 @@ interface ReelCarouselProps {
   videos: string[];
 }
 
+/**
+ * Aggressive video-loading strategy:
+ * 1. All videos start with preload="auto" so the browser fetches them in the background.
+ * 2. We listen to BOTH `loadeddata` and `canplay` events to mark videos as ready.
+ * 3. A periodic watchdog checks for stuck videos and forces a reload by resetting `src`.
+ * 4. When the active slide changes we explicitly call `.load()` + `.play()` on that video
+ *    to make sure the browser prioritises it.
+ */
 export default function ReelCarousel({ videos }: ReelCarouselProps) {
   const [active, setActive] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -17,15 +25,18 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track how many times we've retried each video to avoid infinite loops
+  const retryCountRef = useRef<number[]>(new Array(videos.length).fill(0));
+  const MAX_RETRIES = 3;
 
-  const markLoaded = (idx: number) => {
+  const markLoaded = useCallback((idx: number) => {
     setLoadedSet((prev) => {
       if (prev.has(idx)) return prev;
       const next = new Set(prev);
       next.add(idx);
       return next;
     });
-  };
+  }, []);
 
   const count = videos.length;
 
@@ -45,14 +56,48 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
     [count]
   );
 
-  // Manage playback
+  // ── Force-load a video that might be stuck ──
+  const forceLoadVideo = useCallback(
+    (v: HTMLVideoElement, idx: number) => {
+      if (retryCountRef.current[idx] >= MAX_RETRIES) return;
+      retryCountRef.current[idx]++;
+      // Reassign src to bust any stalled connection
+      const currentSrc = v.src;
+      v.src = "";
+      v.removeAttribute("src");
+      v.load();
+      // After a micro-tick, reassign the real src
+      requestAnimationFrame(() => {
+        v.src = currentSrc;
+        v.load();
+      });
+    },
+    []
+  );
+
+  // ── Manage playback when the active slide changes ──
   useEffect(() => {
     videoRefs.current.forEach((v, i) => {
       if (!v) return;
       if (i === active) {
         v.currentTime = 0;
         v.muted = muted;
-        if (!paused) v.play().catch(() => {});
+
+        // If the video has no data yet, explicitly kick-start loading
+        if (v.readyState < 2) {
+          v.load();
+        }
+
+        if (!paused) {
+          const playPromise = v.play();
+          if (playPromise) {
+            playPromise.catch(() => {
+              // Autoplay might be blocked; mute and retry once
+              v.muted = true;
+              v.play().catch(() => {});
+            });
+          }
+        }
       } else {
         v.pause();
       }
@@ -61,13 +106,13 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  // Sync muted
+  // ── Sync muted ──
   useEffect(() => {
     const v = videoRefs.current[active];
     if (v) v.muted = muted;
   }, [muted, active]);
 
-  // Sync play/pause
+  // ── Sync play/pause ──
   useEffect(() => {
     const v = videoRefs.current[active];
     if (!v) return;
@@ -75,7 +120,7 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
     else v.play().catch(() => {});
   }, [paused, active]);
 
-  // Track progress
+  // ── Track progress ──
   useEffect(() => {
     const v = videoRefs.current[active];
     if (!v) return;
@@ -85,6 +130,51 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
     v.addEventListener("timeupdate", onTime);
     return () => v.removeEventListener("timeupdate", onTime);
   }, [active]);
+
+  // ── Watchdog: detect stuck videos and force-reload them ──
+  useEffect(() => {
+    const watchdogInterval = setInterval(() => {
+      videoRefs.current.forEach((v, i) => {
+        if (!v) return;
+        // If the video hasn't loaded after being in the DOM for a while, retry
+        if (!loadedSet.has(i) && v.readyState < 2 && v.networkState !== 2) {
+          // networkState 2 = LOADING (still actively trying)
+          // readyState < 2 = not enough data to play
+          forceLoadVideo(v, i);
+        }
+      });
+    }, 4000); // Check every 4 seconds
+
+    return () => clearInterval(watchdogInterval);
+  }, [loadedSet, forceLoadVideo]);
+
+  // ── Handle video error events ──
+  const handleVideoError = useCallback(
+    (idx: number) => {
+      const v = videoRefs.current[idx];
+      if (!v) return;
+      // Retry loading after a short delay
+      setTimeout(() => {
+        forceLoadVideo(v, idx);
+      }, 1500);
+    },
+    [forceLoadVideo]
+  );
+
+  // ── Handle stall events (browser stopped receiving data) ──
+  const handleVideoStall = useCallback(
+    (idx: number) => {
+      const v = videoRefs.current[idx];
+      if (!v) return;
+      // Wait a bit, then check if it's still stuck
+      setTimeout(() => {
+        if (v.readyState < 2 && !loadedSet.has(idx)) {
+          forceLoadVideo(v, idx);
+        }
+      }, 3000);
+    },
+    [forceLoadVideo, loadedSet]
+  );
 
   // Keyboard
   useEffect(() => {
@@ -173,7 +263,12 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
                 loop
                 muted
                 playsInline
+                preload="auto"
                 className="hidden"
+                onLoadedData={() => markLoaded(i)}
+                onCanPlay={() => markLoaded(i)}
+                onError={() => handleVideoError(i)}
+                onStalled={() => handleVideoStall(i)}
               />
             );
           }
@@ -197,7 +292,7 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
           return (
             <motion.div
               key={i}
-              className="absolute top-1/2 left-1/2"
+              className="absolute top-1/2 left-1/2 cursor-target"
               onMouseMove={(e) => handleCardMouseMove(e, i)}
               onMouseLeave={handleCardMouseLeave}
               style={{
@@ -239,10 +334,13 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
                   loop
                   muted={isActive ? muted : true}
                   playsInline
-                  preload="metadata"
+                  preload="auto"
                   className="h-full w-full object-cover pointer-events-none"
                   draggable={false}
                   onLoadedData={() => markLoaded(i)}
+                  onCanPlay={() => markLoaded(i)}
+                  onError={() => handleVideoError(i)}
+                  onStalled={() => handleVideoStall(i)}
                   style={{ userSelect: "none", WebkitUserDrag: "none" } as React.CSSProperties}
                 />
 
