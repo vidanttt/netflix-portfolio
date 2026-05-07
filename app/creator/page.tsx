@@ -15,6 +15,7 @@ import ReelCarousel from "./components/ReelCarousel";
 import SmoothScroll from "./components/SmoothScroll";
 import GlareHover from '@/components/GlareHover'
 import BorderGlow from '@/components/BorderGlow'
+import GlassMusicPlayer from '@/components/GlassMusicPlayer';
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -591,8 +592,9 @@ export default function CreatorPage() {
   }, []);
 
   return (
-    <SmoothScroll>
+      <SmoothScroll>
       {/* Loading overlay removed — handled by TransitionProvider */}
+      <GlassMusicPlayer />
       <TargetCursor
         spinDuration={2}
         hideDefaultCursor
