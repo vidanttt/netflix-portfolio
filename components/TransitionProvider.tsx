@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import LoadingScreen from '@/components/LoadingScreen';
 
@@ -15,8 +15,19 @@ const TransitionContext = createContext<TransitionContextType>({
 export const usePageTransition = () => useContext(TransitionContext);
 
 export default function TransitionProvider({ children }: { children: React.ReactNode }) {
-  const [showLoading, setShowLoading] = useState(false);
   const pathname = usePathname();
+  const hasAutoTriggered = useRef(false);
+
+  // Show loading immediately if landing directly on /creator (works on SSR too)
+  const [showLoading, setShowLoading] = useState(pathname === '/creator');
+
+  // Mark that auto-trigger already fired so we don't re-fire on re-renders
+  useEffect(() => {
+    if (pathname === '/creator' && !hasAutoTriggered.current) {
+      hasAutoTriggered.current = true;
+      setShowLoading(true);
+    }
+  }, [pathname]);
 
   const startTransition = useCallback(() => {
     setShowLoading(true);

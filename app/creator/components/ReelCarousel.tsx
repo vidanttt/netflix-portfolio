@@ -94,7 +94,7 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
             playPromise.catch(() => {
               // Autoplay might be blocked; mute and retry once
               v.muted = true;
-              v.play().catch(() => {});
+              v.play().catch(() => { });
             });
           }
         }
@@ -117,7 +117,7 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
     const v = videoRefs.current[active];
     if (!v) return;
     if (paused) v.pause();
-    else v.play().catch(() => {});
+    else v.play().catch(() => { });
   }, [paused, active]);
 
   // ── Track progress ──
@@ -322,11 +322,10 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
               }}
             >
               <div
-                className={`relative h-full w-full overflow-hidden rounded-3xl bg-black transition-shadow duration-500 ${
-                  isActive
+                className={`relative h-full w-full overflow-hidden rounded-3xl bg-black transition-shadow duration-500 ${isActive
                     ? "shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6),0_0_60px_-10px_rgba(120,120,255,0.35)] ring-1 ring-white/20"
                     : "shadow-2xl ring-1 ring-white/5"
-                }`}
+                  }`}
               >
                 <video
                   ref={(el) => { videoRefs.current[i] = el; }}
@@ -473,9 +472,8 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
             key={i}
             aria-label={`Go to reel ${i + 1}`}
             onClick={() => goTo(i)}
-            className={`h-1.5 rounded-full transition-all ${
-              i === active ? "w-8 bg-foreground" : "w-1.5 bg-foreground/30 hover:bg-foreground/60"
-            }`}
+            className={`h-1.5 rounded-full transition-all ${i === active ? "w-8 bg-foreground" : "w-1.5 bg-foreground/30 hover:bg-foreground/60"
+              }`}
           />
         ))}
       </div>

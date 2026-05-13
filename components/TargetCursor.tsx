@@ -40,15 +40,19 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
 
   const moveCursor = useCallback((x: number, y: number) => {
     if (!cursorRef.current) return;
-    gsap.to(cursorRef.current, { x, y, duration: 0.1, ease: 'power3.out' });
+    gsap.to(cursorRef.current, { x, y, duration: 0.8, ease: 'back.out(1.5)', overwrite: 'auto' });
   }, []);
 
   useEffect(() => {
     if (isMobile || !cursorRef.current) return;
 
+    let styleElement: HTMLStyleElement | null = null;
     const originalCursor = document.body.style.cursor;
     if (hideDefaultCursor) {
       document.body.style.cursor = 'none';
+      styleElement = document.createElement('style');
+      styleElement.innerHTML = `* { cursor: none !important; }`;
+      document.head.appendChild(styleElement);
     }
 
     const cursor = cursorRef.current;
@@ -286,6 +290,9 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       }
       spinTl.current?.kill();
       document.body.style.cursor = originalCursor;
+      if (styleElement) {
+        document.head.removeChild(styleElement);
+      }
       isActiveRef.current = false;
       targetCornerPositionsRef.current = null;
       activeStrengthRef.current.current = 0;
@@ -309,7 +316,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
   return (
     <div
       ref={cursorRef}
-      className="fixed top-0 left-0 w-0 h-0 pointer-events-none z-[9999]"
+      className="fixed top-0 left-0 w-0 h-0 pointer-events-none z-[9999] mix-blend-difference"
       style={{ willChange: 'transform' }}
     >
       <div

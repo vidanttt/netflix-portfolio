@@ -314,7 +314,7 @@ const GlassMusicPlayer = ({ songs = defaultPlaylist }: Props) => {
                 setTimeout(() => (draggedRef.current = false), 50);
             }}
             style={{ x, y, touchAction: "none" }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing will-change-transform z-50"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 will-change-transform z-50"
         >
             {/* Audio element for real playback */}
             <audio
@@ -485,7 +485,7 @@ const GlassMusicPlayer = ({ songs = defaultPlaylist }: Props) => {
                                     ref={barRef}
                                     data-no-drag
                                     onPointerDown={onSeekDown}
-                                    className="group relative h-6 flex items-center cursor-pointer touch-none select-none"
+                                    className="group relative h-6 flex items-center touch-none select-none"
                                 >
                                     <div
                                         className={`relative w-full rounded-full bg-white/15 overflow-hidden transition-all ${scrubbing ? "h-2.5" : "h-1.5 group-hover:h-2"
@@ -583,7 +583,7 @@ const GlassMusicPlayer = ({ songs = defaultPlaylist }: Props) => {
                                     ref={volRef}
                                     data-no-drag
                                     onPointerDown={onVolumeDown}
-                                    className="group relative h-5 flex-1 flex items-center cursor-pointer touch-none select-none"
+                                    className="group relative h-5 flex-1 flex items-center touch-none select-none"
                                 >
                                     <div className="relative w-full h-1 rounded-full bg-white/15 overflow-hidden transition-all group-hover:h-1.5">
                                         <motion.div

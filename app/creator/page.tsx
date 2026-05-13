@@ -458,6 +458,8 @@ export default function CreatorPage() {
     let gyroY = 0;
     let scrollProgress = 0;
     let scrollYInfluence = 0;
+    let velX = 0;
+    let velY = 0;
 
     const updateScrollProgress = () => {
       if (heroRef.current) {
@@ -479,8 +481,19 @@ export default function CreatorPage() {
     };
 
     const applyTransforms = () => {
-      currentX += (targetX - currentX) * 0.12;
-      currentY += (targetY - currentY) * 0.12;
+      // Spring physics: force is proportional to distance from target
+      const forceX = (targetX - currentX) * 0.04;
+      const forceY = (targetY - currentY) * 0.04;
+
+      velX += forceX;
+      velY += forceY;
+
+      // Friction: dampens the velocity to prevent endless oscillation
+      velX *= 0.85;
+      velY *= 0.85;
+
+      currentX += velX;
+      currentY += velY;
 
       const statueScrollOffsetY = isMobile ? scrollProgress * -120 : 0;
 
@@ -592,7 +605,7 @@ export default function CreatorPage() {
   }, []);
 
   return (
-      <SmoothScroll>
+    <SmoothScroll>
       {/* Loading overlay removed — handled by TransitionProvider */}
       <GlassMusicPlayer />
       <TargetCursor
