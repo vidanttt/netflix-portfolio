@@ -16,6 +16,7 @@ import SmoothScroll from "./components/SmoothScroll";
 import GlareHover from '@/components/GlareHover'
 import BorderGlow from '@/components/BorderGlow'
 import GlassMusicPlayer from '@/components/GlassMusicPlayer';
+import VideoCarousel, { type CarouselItem } from '@/components/VideoCarousel';
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -150,11 +151,11 @@ function AboutSection() {
               }}>
                 CONTACT ME
               </h4>
-              <a href="mailto:hello@180hrtz.com" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
+              <a href="mailto:vidantforeal@gmail.com" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
                 <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                hello@180hrtz.com
+                vidantforeal@gmail.com
               </a>
               <a href="#" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
                 <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -424,10 +425,10 @@ const socialItems = [
 ];
 
 const statItems = [
-  { link: '#', text: '1K+ PROJECTS DELIVERED', image: 'https://picsum.photos/600/400?random=1' },
-  { link: '#', text: '1M+ TOTAL VIEWS', image: 'https://picsum.photos/600/400?random=2' },
-  { link: '#', text: '5+ YEARS EXPERIENCE', image: 'https://picsum.photos/600/400?random=3' },
-  { link: '#', text: 'upcoming TOP Creators', image: 'https://picsum.photos/600/400?random=4' }
+  { text: '1K+ PROJECTS DELIVERED', image: 'https://picsum.photos/600/400?random=1' },
+  { text: '1M+ TOTAL VIEWS', image: 'https://picsum.photos/600/400?random=2' },
+  { text: '5+ YEARS EXPERIENCE', image: 'https://picsum.photos/600/400?random=3' },
+  { text: 'upcoming TOP Creators', image: 'https://picsum.photos/600/400?random=4' }
 ];
 
 export default function CreatorPage() {
@@ -713,6 +714,27 @@ export default function CreatorPage() {
         {/* ────── SECTION 2: ABOUT ────── */}
         <AboutSection />
 
+        {/* ────── VIDEO CAROUSEL ────── */}
+        <section id="video-carousel" className="hz-section" style={{ paddingTop: '2rem', paddingBottom: '0' }}>
+          <div className="hz-divider" style={{ marginBottom: '4rem' }} />
+          <p className="hz-section-label">:)</p>
+          <h2 className="hz-section-heading">SHOWREELS</h2>
+          <VideoCarousel
+            items={[
+              { src: '/showreels/1.mp4' },
+              { src: '/showreels/2.mp4' },
+              { src: '/showreels/3.mp4' },
+              { src: '/showreels/4.mp4' },
+              { src: '/showreels/5.mp4' },
+              { src: '/showreels/6.mp4' },
+            ]}
+            cardWidth={300}
+            cardHeight={300}
+            speed={40}
+            gap={24}
+          />
+        </section>
+
         {/* ────── SECTION 2.5: QUICK STATS ────── */}
         <section id="stats" className="hz-stats-section" style={{ position: 'relative', width: '100vw' }}>
           <FlowingMenu
@@ -727,8 +749,8 @@ export default function CreatorPage() {
         </section>
 
         {/* ────── SECTION 3: WORK — Parallax Grid ────── */}
-        <div className="hz-divider" style={{ marginBottom: '2rem', marginTop: '4rem' }} />
-        <section id="work" style={{ background: 'transparent', position: 'relative' }}>
+        <div className="hz-divider" style={{ marginBottom: '2rem', marginTop: '4rem', position: 'relative', zIndex: 10 }} />
+        <section id="work" style={{ background: 'transparent', position: 'relative', overflowX: 'clip' }}>
           <HeroParallax channels={[
             // Row 1
             { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
@@ -752,7 +774,7 @@ export default function CreatorPage() {
         </section>
 
         {/* ────── SECTION 3.5: REEL CAROUSEL ────── */}
-        <section id="reels" className="hz-section" style={{ paddingTop: '4rem', paddingBottom: '4rem', marginTop: '-40vh' }}>
+        <section id="reels" className="hz-section" style={{ paddingTop: '4rem', paddingBottom: '4rem', position: 'relative', zIndex: 10, isolation: 'isolate' }}>
           <div className="hz-divider" style={{ marginBottom: '4rem' }} />
           <p className="hz-section-label">PORTFOLIO · REELS</p>
           <h2 className="hz-section-heading">SELECTED WORK</h2>
@@ -767,10 +789,14 @@ export default function CreatorPage() {
         </section>
 
         {/* ────── SECTION 4: SKILLS ────── */}
-        <SkillsSection />
+        <div style={{ position: 'relative', zIndex: 10, isolation: 'isolate' }}>
+          <SkillsSection />
+        </div>
 
         {/* ────── SECTION 5: CONTACT ────── */}
-        <ContactSection />
+        <div style={{ position: 'relative', zIndex: 10, isolation: 'isolate' }}>
+          <ContactSection />
+        </div>
       </div>
       {/* <div>
 

@@ -123,6 +123,11 @@ const LoadingScreen = ({
                                 >
                                     %
                                 </span>
+                                
+                                {/* Desktop experience indicator */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 md:mt-8 font-mono text-[10px] md:text-xs tracking-[0.3em] uppercase whitespace-nowrap opacity-80" style={{ color: "#d0d0d0", textShadow: "0 0 15px rgba(255,255,255,0.6)" }}>
+                                    Best experienced on Desktop
+                                </div>
                             </div>
                         </motion.div>
                     )}
@@ -212,6 +217,11 @@ const LoadingScreen = ({
                                     >
                                         %
                                     </span>
+                                    
+                                    {/* Desktop experience indicator (slides down with bottom half) */}
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 md:mt-8 font-mono text-[10px] md:text-xs tracking-[0.3em] uppercase whitespace-nowrap opacity-80" style={{ color: "#d0d0d0", textShadow: "0 0 15px rgba(255,255,255,0.6)" }}>
+                                        Best experienced on Desktop
+                                    </div>
                                 </div>
                             </motion.div>
                         </>

@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { gsap } from 'gsap';
 
 interface MenuItemData {
-  link: string;
+  link?: string;
   text: string;
   image: string;
 }
@@ -156,7 +156,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
     >
       <a
         className="flex items-center justify-center h-full relative cursor-pointer uppercase no-underline font-semibold text-[4vh]"
-        href={link}
+        href={link || '#'}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         style={{ color: textColor }}

@@ -135,7 +135,7 @@ export const HeroParallax = ({
     springConfig
   );
   const translateY = useSpring(
-    useTransform(scrollYProgress, [0, 0.2], [-700, 500]),
+    useTransform(scrollYProgress, [0, 0.2], [-700, 200]),
     springConfig
   );
 
@@ -143,9 +143,9 @@ export const HeroParallax = ({
     <div
       ref={ref}
       style={{
-        height: "300vh",
+        height: "min(300vh, 2400px)",
         paddingTop: "10rem",
-        paddingBottom: "10rem",
+        paddingBottom: "4rem",
         overflow: "hidden",
         WebkitFontSmoothing: "antialiased",
         position: "relative",
@@ -265,7 +265,7 @@ export const ParallaxHeader = () => {
             marginBottom: "1.5rem",
           }}
         >
-          MY WORK
+          CREATORS
         </h2>
 
         <p
@@ -278,7 +278,7 @@ export const ParallaxHeader = () => {
             color: "#7fa870",
           }}
         >
-          Some of the amazing creators I've had the privilege to edit for.
+          Some of the creators I've worked with xd
         </p>
       </div>
     </div>
