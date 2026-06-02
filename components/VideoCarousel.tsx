@@ -5,6 +5,7 @@ import {
   useMotionValue,
   useTransform,
 } from "motion/react";
+import { getCachedVideoUrl, subscribeToVideoCache } from "@/lib/preloadAssets";
 
 export interface CarouselItem {
   src: string;
@@ -56,8 +57,6 @@ export function VideoCarousel({
     return () => ro.disconnect();
   }, [items.length]);
 
-  // Keep x wrapped within [-trackWidth, 0] so the loop is seamless even
-  // after drags, momentum, or auto-scroll.
   const wrap = (v: number) => {
     if (trackWidth === 0) return v;
     let n = v;
@@ -66,11 +65,6 @@ export function VideoCarousel({
     return n;
   };
 
-  // Perpetual motion — NEVER stops. Not on hover, not during drag.
-  // Framer's drag system manipulates the same motion value, so the
-  // conveyor keeps advancing and the user's gesture blends on top.
-  // After release, momentum continues from wherever x lands —
-  // no snap, no delay, no easing reset.
   useAnimationFrame((_, delta) => {
     if (trackWidth === 0) return;
     const currentSpeed = isMobile ? speed * 2.5 : speed;
@@ -89,7 +83,7 @@ export function VideoCarousel({
         paddingBlock: 60,
       }}
     >
-      {/* Soft atmospheric white glow — diffused, cinematic */}
+      {/* Soft atmospheric white glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 rounded-[50%]"
@@ -139,6 +133,7 @@ export function VideoCarousel({
   );
 }
 
+// ── Types ──
 interface CardProps {
   item: CarouselItem;
   index: number;
@@ -161,11 +156,23 @@ function CarouselCard({
   isMobile,
 }: CardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // Dynamic resolved src (updates if blob gets loaded later)
+  const [resolvedSrc, setResolvedSrc] = useState(() => getCachedVideoUrl(item.src));
+  
+  // Track if card is near center so we can save browser decodes on distant cards
+  const [shouldPlay, setShouldPlay] = useState(false);
+
+  useEffect(() => {
+    const updateSrc = () => setResolvedSrc(getCachedVideoUrl(item.src));
+    // Check initially in case it loaded before this effect runs
+    updateSrc();
+    const unsubscribe = subscribeToVideoCache(updateSrc);
+    return () => { unsubscribe(); };
+  }, [item.src]);
 
   const cardCenterInTrack = gap + index * (cardWidth + gap) + cardWidth / 2;
 
-  // Distance from this card's center to the container's visual center.
-  // Used to drive 3D tilt, opacity fade, and blur on far-edge cards.
   const distance = useTransform(trackX, (tx) => {
     const container = containerRef.current;
     if (!container) return 0;
@@ -173,7 +180,6 @@ function CarouselCard({
     return cardCenterInTrack + tx - containerCenter;
   });
 
-  // Subtle 3D rotateY — cards at the edges tilt away slightly
   const rotateY = useTransform(distance, (d) => {
     const container = containerRef.current;
     const half = container ? container.clientWidth / 2 : 600;
@@ -181,7 +187,6 @@ function CarouselCard({
     return -t * 6;
   });
 
-  // Fade out cards approaching the edge masks
   const opacity = useTransform(distance, (d) => {
     if (isMobile) return 1;
     const container = containerRef.current;
@@ -191,28 +196,60 @@ function CarouselCard({
     return Math.max(0, 1 - (t - 0.85) / 0.35);
   });
 
-  // Gentle depth-of-field blur on distant cards
-  const blurPx = useTransform(distance, (d) => {
+  // Instead of expensive CSS blur on videos, we use a simple black overlay that
+  // gets darker as the card moves further away. This is hardware-accelerated
+  // and virtually free compared to `filter: blur()`.
+  const overlayOpacity = useTransform(distance, (d) => {
     if (isMobile) return 0;
     const container = containerRef.current;
     const half = container ? container.clientWidth / 2 : 600;
     const t = Math.abs(d) / half;
-    return t < 0.8 ? 0 : Math.min(3, (t - 0.8) * 8);
+    return t < 0.6 ? 0 : Math.min(0.7, (t - 0.6) * 1.5);
   });
-  const filter = useTransform(blurPx, (b) => `blur(${b}px)`);
 
-  // Keep video playing at all times — even after fast drags cause
-  // the browser to pause offscreen elements. A periodic check
-  // re-triggers play on any paused video so the loop never breaks.
+  // Evaluate "shouldPlay" based on distance threshold
+  useEffect(() => {
+    // Initial evaluation
+    const evalPlay = () => {
+      const container = containerRef.current;
+      const threshold = container ? container.clientWidth * 0.75 : 800;
+      setShouldPlay(Math.abs(distance.get()) < threshold);
+    };
+    evalPlay();
+
+    const unsubscribe = distance.on("change", (d) => {
+      const container = containerRef.current;
+      const threshold = container ? container.clientWidth * 0.75 : 800;
+      setShouldPlay(Math.abs(d) < threshold);
+    });
+    
+    // Also re-evaluate on window resize
+    window.addEventListener("resize", evalPlay);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("resize", evalPlay);
+    };
+  }, [distance, containerRef]);
+
+  // Actually control the video element based on shouldPlay and resolvedSrc
   useEffect(() => {
     const v = videoRef.current;
-    if (!v) return;
-    v.play().catch(() => { });
-    const id = setInterval(() => {
-      if (v.paused) v.play().catch(() => { });
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    if (!v || !resolvedSrc) return;
+
+    if (shouldPlay) {
+      if (v.readyState === 0) {
+        v.load();
+      }
+      v.play().catch(() => {
+        v.muted = true;
+        v.play().catch(() => {});
+      });
+    } else {
+      if (!v.paused) {
+        v.pause();
+      }
+    }
+  }, [shouldPlay, resolvedSrc]);
 
   return (
     <motion.div
@@ -224,24 +261,30 @@ function CarouselCard({
         opacity,
         transformStyle: "preserve-3d",
         transformPerspective: 2000,
-        willChange: "transform, opacity, filter",
+        willChange: "transform, opacity",
       }}
     >
       <motion.div
-        className="pointer-events-none relative h-full w-full overflow-hidden rounded-[1.75rem] border border-white/10 bg-muted shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]"
-        style={{ filter }}
+        className="pointer-events-none relative h-full w-full overflow-hidden rounded-[1.75rem] border border-white/10 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]"
+        style={{ background: "#111" }}
       >
         <video
           ref={videoRef}
-          src={item.src}
+          src={resolvedSrc}
           poster={item.poster}
-          autoPlay
           muted
           loop
           playsInline
-          preload="metadata"
+          // Critical: set preload="none" for offscreen videos so Chrome doesn't choke on 18 requests
+          preload={shouldPlay ? "auto" : "none"}
           draggable={false}
-          className="pointer-events-none h-full w-full object-cover"
+          className="pointer-events-none h-full w-full object-cover transition-opacity duration-300"
+          style={{ opacity: resolvedSrc ? 1 : 0 }}
+        />
+        {/* Depth overlay (hardware accelerated alternative to CSS blur) */}
+        <motion.div 
+          className="pointer-events-none absolute inset-0 bg-black"
+          style={{ opacity: overlayOpacity }}
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-black/60" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent mix-blend-overlay" />

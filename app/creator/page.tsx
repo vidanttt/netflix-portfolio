@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Particles from '@/app/Backgrounds/Particles';
 import TextPressure from '@/app/TextPressure/TextPressure';
@@ -151,11 +151,11 @@ function AboutSection() {
               }}>
                 CONTACT ME
               </h4>
-              <a href="mailto:vidantforeal@gmail.com" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
+              <a href="mailto:180hrtz.gg@gmail.com" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
                 <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                vidantforeal@gmail.com
+                180hrtz.gg@gmail.com
               </a>
               <a href="#" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
                 <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -163,7 +163,7 @@ function AboutSection() {
                   <circle cx="12" cy="12" r="4" />
                   <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
                 </svg>
-                @180hrtz
+                @180hrtz_
               </a>
               <a href="#" className="hz-contact-link cursor-target" style={{ borderBottom: 'none', color: '#d0d0d0' }}>
                 <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -352,7 +352,7 @@ function ContactSection() {
             Drop me a mail and lets connect :)
           </p>
           <a href="mailto:hello@180hrtz.com" className="hz-contact-email cursor-target">
-            vidantforeal@gmail.com
+            180hrtz.gg@gmail.com
           </a>
           <div className="hz-social-links">
             {['INSTAGRAM', 'YOUTUBE', 'TWITTER', 'BEHANCE'].map((s) => (
@@ -435,19 +435,7 @@ export default function CreatorPage() {
   const statueRef = useRef<HTMLDivElement>(null);
   const particlesBgRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
-  const [pageReady, setPageReady] = useState(false);
 
-  // Wait for the page to be fully loaded (images, videos, etc.)
-  useEffect(() => {
-    if (document.readyState === 'complete') {
-      // Already loaded (e.g. back/forward navigation)
-      setTimeout(() => setPageReady(true), 300);
-    } else {
-      const onLoad = () => setTimeout(() => setPageReady(true), 300);
-      window.addEventListener('load', onLoad);
-      return () => window.removeEventListener('load', onLoad);
-    }
-  }, []);
 
   useEffect(() => {
     let rafId = 0;
@@ -753,15 +741,15 @@ export default function CreatorPage() {
         <section id="work" style={{ background: 'transparent', position: 'relative', overflowX: 'clip' }}>
           <HeroParallax channels={[
             // Row 1
-            { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
+            { title: 'BACHU', channelUrl: 'https://www.youtube.com/@bachuuuuu' },
             { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
-            { title: 'Vibhors Verse', channelUrl: 'https://www.youtube.com/@vibhorsverse8535' },
+            { title: 'Elite Shot', channelUrl: 'https://www.youtube.com/@EliteShot' },
             { title: 'Doctor Narcos', channelUrl: 'https://www.youtube.com/@DoctorNarcos/shorts' },
             { title: 'Peach Gaming', channelUrl: 'https://www.youtube.com/@PeachGaming' },
             // Row 2
             { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
             { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
-            { title: 'Vibhors Verse', channelUrl: 'https://www.youtube.com/@vibhorsverse8535' },
+            { title: 'BACHU', channelUrl: 'https://www.youtube.com/@bachuuuuu' },
             { title: 'Doctor Narcos', channelUrl: 'https://www.youtube.com/@DoctorNarcos/shorts' },
             { title: 'Peach Gaming', channelUrl: 'https://www.youtube.com/@PeachGaming' },
             // Row 3
