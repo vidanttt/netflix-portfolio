@@ -25,6 +25,14 @@ export default function TransitionProvider({ children }: { children: React.React
   const [loadProgress, setLoadProgress] = useState(0);
   const [assetsReady, setAssetsReady] = useState(false);
 
+  // Auto-finish transition for routes that don't have custom preloading (like /developer, /Bored)
+  useEffect(() => {
+    if (showLoading && pathname !== '/creator') {
+      setLoadProgress(100);
+      setAssetsReady(true);
+    }
+  }, [showLoading, pathname]);
+
   // Mark that auto-trigger already fired so we don't re-fire on re-renders
   useEffect(() => {
     if (pathname === '/creator' && !hasAutoTriggered.current) {

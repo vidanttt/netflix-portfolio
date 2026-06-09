@@ -1124,7 +1124,11 @@
   }
 
   .bd-nav-wrap {
-    top: 1.5rem;
+    top: 1rem;
+    left: 0;
+    transform: none;
+    width: 100%;
+    padding: 0 1.25rem;
   }
 }
 
