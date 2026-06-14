@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { ContinueWatchingItem, PlayerProvider } from '../lib/types';
 import { ALL_PROVIDERS } from '../lib/providers';
-import { updateContinueWatching } from '../lib/storage';
+import { updateContinueWatching, getContinueWatching } from '../lib/storage';
 import { ChevronDownIcon } from '../lib/icons';
 
 /* ── Fallback timeout — how long before we consider a server failed ── */
@@ -34,6 +34,10 @@ export default function PlayerEmbed({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [failedServers, setFailedServers] = useState<Set<number>>(new Set());
   const [autoFallbackMsg, setAutoFallbackMsg] = useState<string | null>(null);
+  
+  // Local progress state for cross-origin watching fallback
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(mediaType === 'movie' ? 7200 : 2700);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -143,15 +147,26 @@ export default function PlayerEmbed({
     setLoading(true);
   }, []);
 
-  /* ── Save to continue watching on mount ── */
+  /* ── Save / Resume continue watching on mount ── */
   useEffect(() => {
+    const historyList = getContinueWatching();
+    const existing = historyList.find(
+      (x) => x.tmdbId === tmdbId && x.mediaType === mediaType && x.season === season && x.episode === episode
+    );
+
+    const startProgress = existing ? existing.progress : 0;
+    const startDuration = existing && existing.duration > 0 ? existing.duration : (mediaType === 'movie' ? 7200 : 2700);
+
+    setProgress(startProgress);
+    setDuration(startDuration);
+
     const cwItem: ContinueWatchingItem = {
       tmdbId,
       mediaType,
       season,
       episode,
-      progress: 0,
-      duration: 0,
+      progress: startProgress,
+      duration: startDuration,
       poster,
       backdrop,
       title,
@@ -161,20 +176,50 @@ export default function PlayerEmbed({
     updateContinueWatching(cwItem);
   }, [tmdbId, mediaType, season, episode, poster, backdrop, title, episodeTitle]);
 
-  /* ── Listen for postMessage progress ── */
+  /* ── Local background progress timer & message listener fallback ── */
   useEffect(() => {
+    // 1. Local background timer (updates database/progress every 5 seconds of active page view)
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + 5;
+        if (next >= duration) {
+          clearInterval(interval);
+          return duration;
+        }
+
+        updateContinueWatching({
+          tmdbId,
+          mediaType,
+          season,
+          episode,
+          progress: next,
+          duration,
+          poster,
+          backdrop,
+          title,
+          episodeTitle,
+          timestamp: Date.now(),
+        });
+
+        return next;
+      });
+    }, 5000);
+
+    // 2. Standard postMessage event handler (in case provider supports progress logging)
     const handler = (e: MessageEvent) => {
       if (e.data && typeof e.data === 'object') {
-        const { type, currentTime, duration } = e.data;
+        const { type, currentTime, duration: videoDuration } = e.data;
         if (type === 'timeupdate' || type === 'progress') {
-          if (typeof currentTime === 'number' && typeof duration === 'number' && duration > 0) {
+          if (typeof currentTime === 'number' && typeof videoDuration === 'number' && videoDuration > 0) {
+            setProgress(currentTime);
+            setDuration(videoDuration);
             updateContinueWatching({
               tmdbId,
               mediaType,
               season,
               episode,
               progress: currentTime,
-              duration,
+              duration: videoDuration,
               poster,
               backdrop,
               title,
@@ -187,8 +232,11 @@ export default function PlayerEmbed({
     };
 
     window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [tmdbId, mediaType, season, episode, poster, backdrop, title, episodeTitle]);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('message', handler);
+    };
+  }, [tmdbId, mediaType, season, episode, poster, backdrop, title, episodeTitle, duration]);
 
   /* ── Close dropdown on outside click ── */
   useEffect(() => {

@@ -13,6 +13,8 @@ import SearchOverlay from './components/SearchOverlay';
 import DetailModal from './components/DetailModal';
 import ContinueWatchingRow from './components/ContinueWatchingRow';
 import WatchlistRow from './components/WatchlistRow';
+import { initAuthStorage } from './lib/storage';
+import { useAuth } from '@clerk/nextjs';
 import './bored.css';
 
 /* ════════════════════════════════════════════════════
@@ -108,6 +110,7 @@ const PILL_NAV_ITEMS = [
    MAIN PAGE
    ════════════════════════════════════════════════════ */
 export default function BoredPage() {
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
   const [rows, setRows] = useState<{ title: string; items: MediaItem[] }[]>([]);
   const [heroMovies, setHeroMovies] = useState<MediaItem[]>([]);
   const [heroIdx, setHeroIdx] = useState(0);
@@ -116,6 +119,13 @@ export default function BoredPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [allLoaded, setAllLoaded] = useState(false);
   const [, setWlTick] = useState(0); // force re-render on watchlist changes
+
+  // Synchronize authenticated state and local storage -> MongoDB on login
+  useEffect(() => {
+    if (isAuthLoaded) {
+      initAuthStorage(isSignedIn);
+    }
+  }, [isAuthLoaded, isSignedIn]);
 
   const batchRef = useRef(0);
   const batchLoadingRef = useRef(false);

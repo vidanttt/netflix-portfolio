@@ -221,3 +221,94 @@ img, [data-nimg] {
     font-size: 28px;
   }
 }
+
+/* ============================================================
+   GLOBAL CLERK AUTHENTICATION DIALOG OVERRIDES
+   Keeps text bright white and adds glassmorphism to popovers & modals
+   ============================================================ */
+
+/* 1. Frosted Glass Modal Backdrop Overlay */
+.cl-modalBackdrop {
+  backdrop-filter: blur(16px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4) !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* 2. Glassmorphic Card Containers */
+.cl-userButtonPopoverCard,
+.cl-card,
+.cl-userProfile-root {
+  background: rgba(12, 12, 12, 0.45) !important;
+  backdrop-filter: blur(40px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(1.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 
+    0 24px 80px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+}
+
+/* 3. Global Text Overrides for perfect visibility on dark background */
+.cl-root-box,
+.cl-root-box *,
+.cl-userButtonPopoverCard,
+.cl-userButtonPopoverCard *,
+.cl-userProfile-root,
+.cl-userProfile-root *,
+.cl-modalContent,
+.cl-modalContent * {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 4. Layout Container Transparencies (to reveal glass backdrop) */
+.cl-scrollBox,
+.cl-pageScrollBox,
+.cl-navbar,
+.cl-navbarMobileMenuRow,
+.cl-profilePage,
+.cl-profilePage-root,
+.cl-profileSection,
+.cl-userProfile-root > div,
+.cl-accordionHeaderTrigger {
+  background-color: transparent !important;
+}
+
+/* 5. Muted Text and Labels */
+.cl-headerSubtitle,
+.cl-profileSectionSubtitle,
+.cl-userPreviewSecondaryIdentifier,
+.cl-breadcrumbsItem,
+.cl-formFieldLabelRow span,
+.cl-dividerText,
+.cl-userButtonPopoverFooter *,
+.cl-navbarButton[aria-selected="false"],
+.cl-accordionHeaderTrigger[aria-selected="false"] {
+  color: #a1a1a1 !important;
+}
+
+/* 6. Active Primary buttons */
+.cl-formButtonPrimary {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background-color: #e5e5e5 !important;
+}
+
+.cl-socialButtonsBlockButton {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 7. Hover states for list items & buttons */
+.cl-userButtonPopoverActionButton:hover,
+.cl-navbarButton:hover,
+.cl-accordionHeaderTrigger:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}

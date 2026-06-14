@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
+import { SignInButton, UserButton, useUser } from '@clerk/nextjs';
 
 export type PillNavItem = {
   label: string;
@@ -51,6 +52,26 @@ const PillNav: React.FC<PillNavProps> = ({
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const navItemsRef = useRef<HTMLDivElement | null>(null);
   const logoRef = useRef<HTMLAnchorElement | HTMLElement | null>(null);
+
+  // Clerk Auth State
+  const { isSignedIn, user } = useUser();
+  const isAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+  // Dynamically add Admin and Sign In pills
+  const finalItems = useMemo(() => {
+    const list = [...items];
+    if (isAdmin) {
+      if (!list.some(item => item.href === '/Bored/admin')) {
+        list.push({ label: 'Admin', href: '/Bored/admin' });
+      }
+    }
+    if (!isSignedIn) {
+      if (!list.some(item => item.href === '#signin')) {
+        list.push({ label: 'Sign In', href: '#signin' });
+      }
+    }
+    return list;
+  }, [items, isAdmin, isSignedIn]);
 
   useEffect(() => {
     const layout = () => {
@@ -117,12 +138,12 @@ const PillNav: React.FC<PillNavProps> = ({
     }
 
     if (initialLoadAnimation) {
-      const logo = logoRef.current;
+      const logoItem = logoRef.current;
       const navItems = navItemsRef.current;
 
-      if (logo) {
-        gsap.set(logo, { scale: 0 });
-        gsap.to(logo, {
+      if (logoItem) {
+        gsap.set(logoItem, { scale: 0 });
+        gsap.to(logoItem, {
           scale: 1,
           duration: 0.6,
           ease
@@ -140,7 +161,7 @@ const PillNav: React.FC<PillNavProps> = ({
     }
 
     return () => window.removeEventListener('resize', onResize);
-  }, [items, ease, initialLoadAnimation]);
+  }, [finalItems, ease, initialLoadAnimation]);
 
   const handleEnter = (i: number) => {
     const tl = tlRefs.current[i];
@@ -250,6 +271,9 @@ const PillNav: React.FC<PillNavProps> = ({
     ['--pill-gap']: '3px'
   } as React.CSSProperties;
 
+  const basePillClasses =
+    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[16px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 border-0';
+
   return (
     <div className="relative z-[1000] w-full md:w-auto">
       <nav
@@ -307,7 +331,7 @@ const PillNav: React.FC<PillNavProps> = ({
             className="list-none flex items-stretch m-0 p-[3px] h-full"
             style={{ gap: 'var(--pill-gap)' }}
           >
-            {items.map((item, i) => {
+            {finalItems.map((item, i) => {
               const isActive = activeHref === item.href;
 
               const pillStyle: React.CSSProperties = {
@@ -358,8 +382,25 @@ const PillNav: React.FC<PillNavProps> = ({
                 </>
               );
 
-              const basePillClasses =
-                'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[16px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0';
+              // Render Clerk Sign-In Button wrapper for #signin href
+              if (item.href === '#signin') {
+                return (
+                  <li key={item.href} role="none" className="flex h-full">
+                    <SignInButton mode="modal">
+                      <button
+                        role="menuitem"
+                        className={basePillClasses}
+                        style={pillStyle}
+                        aria-label={item.ariaLabel || item.label}
+                        onMouseEnter={() => handleEnter(i)}
+                        onMouseLeave={() => handleLeave(i)}
+                      >
+                        {PillContent}
+                      </button>
+                    </SignInButton>
+                  </li>
+                );
+              }
 
               return (
                 <li key={item.href} role="none" className="flex h-full">
@@ -391,6 +432,18 @@ const PillNav: React.FC<PillNavProps> = ({
                 </li>
               );
             })}
+
+            {/* Display User Button Profile when Logged In */}
+            {isSignedIn && (
+              <li role="none" className="flex h-full items-center justify-center p-[3px]">
+                <div 
+                  className="rounded-full overflow-hidden flex items-center justify-center bg-[#1f1f1f] border border-[#333]/30 transition-transform duration-200 hover:scale-105"
+                  style={{ width: '30px', height: '30px' }}
+                >
+                  <UserButton />
+                </div>
+              </li>
+            )}
           </ul>
         </div>
 
@@ -426,22 +479,40 @@ const PillNav: React.FC<PillNavProps> = ({
         }}
       >
         <ul className="list-none m-0 p-[3px] flex flex-col gap-[3px]">
-          {items.map(item => {
+          {finalItems.map(item => {
             const defaultStyle: React.CSSProperties = {
               background: 'var(--pill-bg, #fff)',
               color: 'var(--pill-text, #fff)'
             };
-            const hoverIn = (e: React.MouseEvent<HTMLAnchorElement>) => {
+            const hoverIn = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
               e.currentTarget.style.background = 'var(--hover-bg, var(--base))';
               e.currentTarget.style.color = 'var(--hover-text, #fff)';
             };
-            const hoverOut = (e: React.MouseEvent<HTMLAnchorElement>) => {
+            const hoverOut = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
               e.currentTarget.style.background = 'var(--pill-bg, #fff)';
               e.currentTarget.style.color = 'var(--pill-text, #fff)';
             };
 
             const linkClasses =
-              'block py-3 px-4 text-[16px] font-medium rounded-[50px] transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)]';
+              'block w-full text-left py-3 px-4 text-[16px] font-medium rounded-[50px] transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] no-underline border-0 cursor-pointer';
+
+            if (item.href === '#signin') {
+              return (
+                <li key={item.href}>
+                  <SignInButton mode="modal">
+                    <button
+                      className={linkClasses}
+                      style={defaultStyle}
+                      onMouseEnter={hoverIn}
+                      onMouseLeave={hoverOut}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {item.label}
+                    </button>
+                  </SignInButton>
+                </li>
+              );
+            }
 
             return (
               <li key={item.href}>
@@ -471,6 +542,17 @@ const PillNav: React.FC<PillNavProps> = ({
               </li>
             );
           })}
+
+          {/* User profile section in mobile drawer */}
+          {isSignedIn && (
+            <li className="flex items-center gap-3 py-3 px-4 border-t border-[#333]/20 mt-2 bg-[#1f1f1f]/5 rounded-[20px]">
+              <UserButton />
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-white text-sm font-semibold truncate">{user?.fullName || 'User'}</span>
+                <span className="text-gray-400 text-xs truncate">{user?.primaryEmailAddress?.emailAddress}</span>
+              </div>
+            </li>
+          )}
         </ul>
       </div>
     </div>
