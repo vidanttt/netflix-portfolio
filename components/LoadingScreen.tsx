@@ -40,6 +40,14 @@ const LoadingScreen = ({
     const [visible, setVisible] = useState(true);
     const [phase, setPhase] = useState<"counting" | "splitting" | "done">("counting");
     const [counterValue, setCounterValue] = useState(0);
+    // Decided after mount so server and first client render match (no hydration mismatch)
+    const [isNarrow, setIsNarrow] = useState(false);
+    useEffect(() => {
+        const update = () => setIsNarrow(window.innerWidth < 768);
+        update();
+        window.addEventListener("resize", update);
+        return () => window.removeEventListener("resize", update);
+    }, []);
 
     const hasExternalProgress = externalProgress !== undefined;
     const minTimeElapsed = useRef(false);
@@ -136,7 +144,7 @@ const LoadingScreen = ({
         ease: EASE_IN_OUT_EXPO,
     };
 
-    const counterFontSize = typeof window !== "undefined" && window.innerWidth < 768 ? 180 : 280;
+    const counterFontSize = isNarrow ? 180 : 280;
 
     // Show spinner when counter is above 80 and assets aren't ready yet
     const showSpinner = hasExternalProgress && !assetsReady && counterValue >= 40;

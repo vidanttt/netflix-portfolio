@@ -25,72 +25,110 @@ interface ResolvedChannel {
 }
 
 // ── Hook: fetch channel info via our API route ──
+// Avatars are scraped server-side and can fail intermittently, so: unique channels are
+// fetched once, failures are retried with backoff, and good results are cached in
+// localStorage so the next visit paints instantly.
+const CACHE_KEY = "yt-channel-cache-v1";
+
+interface CachedChannel {
+  name: string;
+  avatar: string;
+  channelUrl: string;
+}
+
+function readCache(): Record<string, CachedChannel> {
+  try {
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeCache(cache: Record<string, CachedChannel>) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    /* storage unavailable — fine */
+  }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchChannel(url: string): Promise<CachedChannel | null> {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const res = await fetch(`/api/youtube-channel?url=${encodeURIComponent(url)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.avatar) {
+          return { name: data.name || "", avatar: data.avatar, channelUrl: data.channelUrl || url };
+        }
+      }
+    } catch {
+      /* network blip — retry */
+    }
+    await sleep(700 * 2 ** attempt);
+  }
+  return null;
+}
+
 function useResolvedChannels(channels: ChannelData[]): ResolvedChannel[] {
-  const [resolved, setResolved] = useState<ResolvedChannel[]>(() =>
-    channels.map((c) => ({
-      title: c.title,
-      link: c.channelUrl,
-      thumbnail: c.thumbnail || "",
-    }))
-  );
+  const fallback = (c: ChannelData): ResolvedChannel => ({
+    title: c.title,
+    link: c.channelUrl,
+    thumbnail: c.thumbnail || "",
+  });
+
+  const [resolved, setResolved] = useState<ResolvedChannel[]>(() => channels.map(fallback));
+
+  // Stable key so a new array identity with the same channels doesn't refetch everything
+  const key = channels.map((c) => `${c.channelUrl}|${c.title}|${c.thumbnail || ""}`).join(",");
 
   useEffect(() => {
     let cancelled = false;
+    const cache = readCache();
+    const results = new Map<string, CachedChannel>();
 
-    async function fetchAll() {
-      const results = await Promise.allSettled(
-        channels.map(async (ch, i) => {
-          // If a thumbnail was provided directly, skip the API call
-          if (ch.thumbnail) {
-            return {
-              title: ch.title,
-              link: ch.channelUrl,
-              thumbnail: ch.thumbnail,
-            };
+    const build = () =>
+      channels.map((c): ResolvedChannel => {
+        if (c.thumbnail) return fallback(c);
+        const hit = results.get(c.channelUrl) || cache[c.channelUrl];
+        return hit
+          ? { title: hit.name || c.title, link: hit.channelUrl || c.channelUrl, thumbnail: hit.avatar }
+          : fallback(c);
+      });
+
+    // Paint cached avatars immediately, then refresh in the background
+    setResolved(build());
+
+    const unique = Array.from(new Set(channels.filter((c) => !c.thumbnail).map((c) => c.channelUrl)));
+    // Missing ones first so the blanks fill in before any refreshes
+    unique.sort((a, b) => Number(!!cache[a]) - Number(!!cache[b]));
+
+    (async () => {
+      // Small concurrency so the scraper isn't rate-limited
+      const queue = [...unique];
+      const worker = async () => {
+        while (queue.length && !cancelled) {
+          const url = queue.shift() as string;
+          const data = await fetchChannel(url);
+          if (cancelled) return;
+          if (data) {
+            results.set(url, data);
+            cache[url] = data;
+            writeCache(cache);
+            setResolved(build());
           }
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+    })();
 
-          try {
-            const res = await fetch(
-              `/api/youtube-channel?url=${encodeURIComponent(ch.channelUrl)}`
-            );
-            if (!res.ok) throw new Error("API error");
-            const data = await res.json();
-            return {
-              title: data.name || ch.title,
-              link: data.channelUrl || ch.channelUrl,
-              thumbnail: data.avatar || "",
-            };
-          } catch {
-            // Return fallback on error
-            return {
-              title: ch.title,
-              link: ch.channelUrl,
-              thumbnail: "",
-            };
-          }
-        })
-      );
-
-      if (cancelled) return;
-
-      setResolved(
-        results.map((r, i) =>
-          r.status === "fulfilled"
-            ? r.value
-            : {
-              title: channels[i].title,
-              link: channels[i].channelUrl,
-              thumbnail: "",
-            }
-        )
-      );
-    }
-
-    fetchAll();
     return () => {
       cancelled = true;
     };
-  }, [channels]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   return resolved;
 }
@@ -293,7 +331,25 @@ export const ProductCard = ({
   translate: MotionValue<number>;
 }) => {
   const [hovered, setHovered] = useState(false);
-  const hasAvatar = product.thumbnail && product.thumbnail.length > 0;
+  const [imgTries, setImgTries] = useState(0);
+  const [imgFailed, setImgFailed] = useState(false);
+  const hasAvatar = product.thumbnail && product.thumbnail.length > 0 && !imgFailed;
+
+  // A new avatar URL (after a refetch) gets a fresh set of attempts
+  useEffect(() => {
+    setImgFailed(false);
+    setImgTries(0);
+  }, [product.thumbnail]);
+
+  // Re-attempt a broken image a few times before settling on the placeholder
+  const handleImgError = () => {
+    if (imgTries >= 3) return;
+    setImgFailed(true);
+    setTimeout(() => {
+      setImgTries((t) => t + 1);
+      setImgFailed(false);
+    }, 1200 * (imgTries + 1));
+  };
 
   return (
     <motion.div
@@ -319,7 +375,11 @@ export const ProductCard = ({
         {/* Channel profile picture or loading skeleton */}
         {hasAvatar ? (
           <img
+            key={imgTries}
             src={product.thumbnail}
+            referrerPolicy="no-referrer"
+            decoding="async"
+            onError={handleImgError}
             height="600"
             width="600"
             style={{

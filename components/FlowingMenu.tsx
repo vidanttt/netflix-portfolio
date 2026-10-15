@@ -125,10 +125,15 @@ const MenuItem: React.FC<MenuItemProps> = ({
     };
   }, [text, image, repetitions, speed]);
 
-  const handleMouseEnter = (ev: React.MouseEvent<HTMLAnchorElement>) => {
+  const hoveredRef = useRef(false);
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+
+  const enter = (clientX: number, clientY: number) => {
+    if (hoveredRef.current) return;
     if (!itemRef.current || !marqueeRef.current || !marqueeInnerRef.current) return;
+    hoveredRef.current = true;
     const rect = itemRef.current.getBoundingClientRect();
-    const edge = findClosestEdge(ev.clientX - rect.left, ev.clientY - rect.top, rect.width, rect.height);
+    const edge = findClosestEdge(clientX - rect.left, clientY - rect.top, rect.width, rect.height);
 
     gsap
       .timeline({ defaults: animationDefaults })
@@ -137,16 +142,45 @@ const MenuItem: React.FC<MenuItemProps> = ({
       .to([marqueeRef.current, marqueeInnerRef.current], { y: '0%' }, 0);
   };
 
-  const handleMouseLeave = (ev: React.MouseEvent<HTMLAnchorElement>) => {
+  const leave = (clientX: number, clientY: number) => {
+    if (!hoveredRef.current) return;
     if (!itemRef.current || !marqueeRef.current || !marqueeInnerRef.current) return;
+    hoveredRef.current = false;
     const rect = itemRef.current.getBoundingClientRect();
-    const edge = findClosestEdge(ev.clientX - rect.left, ev.clientY - rect.top, rect.width, rect.height);
+    const edge = findClosestEdge(clientX - rect.left, clientY - rect.top, rect.width, rect.height);
 
     gsap
       .timeline({ defaults: animationDefaults })
       .to(marqueeRef.current, { y: edge === 'top' ? '-101%' : '101%' }, 0)
       .to(marqueeInnerRef.current, { y: edge === 'top' ? '101%' : '-101%' }, 0);
   };
+
+  // Browsers don't fire mouseenter/leave while the page scrolls under a still cursor,
+  // so re-check the item under the last known pointer position on scroll.
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+    };
+    const onScroll = () => {
+      const p = pointerRef.current;
+      const el = itemRef.current;
+      if (!p || !el) return;
+      const r = el.getBoundingClientRect();
+      const inside = p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
+      if (inside) enter(p.x, p.y);
+      else leave(p.x, p.y);
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('scroll', onScroll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleMouseEnter = (ev: React.MouseEvent<HTMLAnchorElement>) => enter(ev.clientX, ev.clientY);
+  const handleMouseLeave = (ev: React.MouseEvent<HTMLAnchorElement>) => leave(ev.clientX, ev.clientY);
 
   return (
     <div

@@ -17,6 +17,10 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
   const [active, setActive] = useState(0);
   const [progress, setProgress] = useState(0);
   const [muted, setMuted] = useState(true);
+  // Sound follows the section: on while the reels are on screen, off once scrolled past
+  const [inView, setInView] = useState(false);
+  const [needsGesture, setNeedsGesture] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
   const [showPauseIcon, setShowPauseIcon] = useState(false);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
@@ -92,8 +96,10 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
           const playPromise = v.play();
           if (playPromise) {
             playPromise.catch(() => {
-              // Autoplay might be blocked; mute and retry once
+              // Sound autoplay blocked by the browser: play muted, unmute on first tap/key
               v.muted = true;
+              setMuted(true);
+              if (inViewRef.current) setNeedsGesture(true);
               v.play().catch(() => { });
             });
           }
@@ -109,8 +115,63 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
   // ── Sync muted ──
   useEffect(() => {
     const v = videoRefs.current[active];
-    if (v) v.muted = muted;
+    if (!v) return;
+    v.muted = muted;
+    if (!muted && !paused) {
+      // Browsers can pause a video that is unmuted by script; make sure it keeps going
+      v.play().catch(() => {
+        v.muted = true;
+        setMuted(true);
+        if (inViewRef.current) setNeedsGesture(true);
+        v.play().catch(() => { });
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [muted, active]);
+
+  // ── Track whether the reels section is on screen ──
+  const inViewRef = useRef(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        inViewRef.current = entry.isIntersecting;
+        setInView(entry.isIntersecting);
+      },
+      { threshold: 0.35 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Sound on when the section comes into view, muted again when it leaves (pc + mobile)
+  useEffect(() => {
+    if (inView) {
+      setMuted(false);
+    } else {
+      setMuted(true);
+      setNeedsGesture(false);
+    }
+  }, [inView]);
+
+  // If the browser blocked sound, the first tap / click / key press turns it on
+  useEffect(() => {
+    if (!needsGesture || !inView) return;
+    const unlock = () => {
+      setNeedsGesture(false);
+      setMuted(false);
+    };
+    const opts = { once: true, capture: true } as const;
+    window.addEventListener("pointerdown", unlock, opts);
+    window.addEventListener("touchend", unlock, opts);
+    window.addEventListener("keydown", unlock, opts);
+    return () => {
+      window.removeEventListener("pointerdown", unlock, true);
+      window.removeEventListener("touchend", unlock, true);
+      window.removeEventListener("keydown", unlock, true);
+    };
+  }, [needsGesture, inView]);
 
   // ── Sync play/pause ──
   useEffect(() => {
@@ -240,7 +301,7 @@ export default function ReelCarousel({ videos }: ReelCarouselProps) {
   };
 
   return (
-    <div className="relative w-full select-none" style={{ userSelect: "none", WebkitUserSelect: "none" }}>
+    <div ref={rootRef} className="relative w-full select-none" style={{ userSelect: "none", WebkitUserSelect: "none" }}>
       <motion.div
         className="relative mx-auto flex h-[70vh] max-h-[640px] min-h-[420px] w-full items-center justify-center overflow-hidden"
         style={{ perspective: 1400 }}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Particles from '@/app/Backgrounds/Particles';
 import TextPressure from '@/app/TextPressure/TextPressure';
@@ -16,7 +16,8 @@ import SmoothScroll from "./components/SmoothScroll";
 import GlareHover from '@/components/GlareHover'
 import BorderGlow from '@/components/BorderGlow'
 import GlassMusicPlayer from '@/components/GlassMusicPlayer';
-import VideoCarousel, { type CarouselItem } from '@/components/VideoCarousel';
+import CircularCarousel from '@/components/CircularCarousel';
+import StatueRelief from '@/components/StatueRelief';
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -426,7 +427,7 @@ const socialItems = [
 
 const statItems = [
   { text: '1K+ PROJECTS DELIVERED', image: 'https://picsum.photos/600/400?random=1' },
-  { text: '1M+ TOTAL VIEWS', image: 'https://picsum.photos/600/400?random=2' },
+  { text: '100M+ TOTAL VIEWS', image: 'https://picsum.photos/600/400?random=2' },
   { text: '5+ YEARS EXPERIENCE', image: 'https://picsum.photos/600/400?random=3' },
   { text: 'upcoming TOP Creators', image: 'https://picsum.photos/600/400?random=4' }
 ];
@@ -435,6 +436,14 @@ export default function CreatorPage() {
   const statueRef = useRef<HTMLDivElement>(null);
   const particlesBgRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
 
   useEffect(() => {
@@ -457,7 +466,7 @@ export default function CreatorPage() {
       } else {
         scrollProgress = Math.max(0, Math.min(1, window.scrollY / Math.max(window.innerHeight, 1)));
       }
-      scrollYInfluence = scrollProgress * -0.35;
+      scrollYInfluence = 0; // statue stays put while scrolling, like desktop
     };
 
     const resetTransforms = () => {
@@ -484,7 +493,7 @@ export default function CreatorPage() {
       currentX += velX;
       currentY += velY;
 
-      const statueScrollOffsetY = isMobile ? scrollProgress * -120 : 0;
+      const statueScrollOffsetY = 0;
 
       if (statueRef.current) {
         statueRef.current.style.transform = `translate(${currentX * -30}px, ${currentY * -20 + statueScrollOffsetY}px)`;
@@ -680,18 +689,7 @@ export default function CreatorPage() {
 
           {/* ── Statue: Mouse-parallax wrapper ── */}
           <div ref={statueRef} className="hz-hero-statue-parallax">
-            <Image
-              src="/hero-statue.png"
-              alt="180 HRTZ :)"
-              width={900}
-              height={900}
-              className="hz-hero-statue"
-              priority
-              sizes="65vw"
-              style={{
-                pointerEvents: 'none',
-              }}
-            />
+            <StatueRelief className="hz-hero-statue" style={{ pointerEvents: 'none' }} />
           </div>
 
           {/* Bottom fade — blends hero into the page below */}
@@ -703,24 +701,28 @@ export default function CreatorPage() {
         <AboutSection />
 
         {/* ────── VIDEO CAROUSEL ────── */}
-        <section id="video-carousel" className="hz-section" style={{ paddingTop: '2rem', paddingBottom: '0' }}>
+        <section id="video-carousel" className="hz-section" style={{ paddingTop: '2rem', paddingBottom: isMobile ? '3rem' : '0' }}>
           <div className="hz-divider" style={{ marginBottom: '4rem' }} />
           <p className="hz-section-label">:)</p>
           <h2 className="hz-section-heading">SHOWREELS</h2>
-          <VideoCarousel
-            items={[
-              { src: '/showreels/1.mp4' },
-              { src: '/showreels/2.mp4' },
-              { src: '/showreels/3.mp4' },
-              { src: '/showreels/4.mp4' },
-              { src: '/showreels/5.mp4' },
-              { src: '/showreels/6.mp4' },
-            ]}
-            cardWidth={300}
-            cardHeight={300}
-            speed={40}
-            gap={24}
-          />
+          <div style={{ height: isMobile ? '90vw' : '900px', width: '100%', marginTop: isMobile ? '-1.5rem' : undefined }}>
+            <CircularCarousel
+              items={[
+                { src: '/showreels/1.mp4', alt: 'Showreel 1' },
+                { src: '/showreels/2.mp4', alt: 'Showreel 2' },
+                { src: '/showreels/3.mp4', alt: 'Showreel 3' },
+                { src: '/showreels/4.mp4', alt: 'Showreel 4' },
+                { src: '/showreels/5.mp4', alt: 'Showreel 5' },
+                { src: '/showreels/6.mp4', alt: 'Showreel 6' },
+              ]}
+              cardWidth={800}
+              preset="cylinder"
+              autoplay="drift"
+              speed={14}
+              gap={24}
+              fitWidth={isMobile ? 1.7 : undefined}
+            />
+          </div>
         </section>
 
         {/* ────── SECTION 2.5: QUICK STATS ────── */}
@@ -743,21 +745,21 @@ export default function CreatorPage() {
             // Row 1
             { title: 'BACHU', channelUrl: 'https://www.youtube.com/@bachuuuuu' },
             { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
-            { title: 'Elite Shot', channelUrl: 'https://www.youtube.com/@EliteShot' },
-            { title: 'Doctor Narcos', channelUrl: 'https://www.youtube.com/@DoctorNarcos/shorts' },
-            { title: 'Peach Gaming', channelUrl: 'https://www.youtube.com/@PeachGaming' },
+            { title: 'Elite Shot', channelUrl: 'https://www.youtube.com/channel/UCi-dlFETsFvri0zSx8zu-iQ' },
+            { title: 'Dynamo Gaming', channelUrl: 'https://www.youtube.com/dynamogaming' },
+            { title: 'S4sh', channelUrl: 'https://www.youtube.com/@s4shhhexe' },
             // Row 2
             { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
             { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
             { title: 'BACHU', channelUrl: 'https://www.youtube.com/@bachuuuuu' },
-            { title: 'Doctor Narcos', channelUrl: 'https://www.youtube.com/@DoctorNarcos/shorts' },
-            { title: 'Peach Gaming', channelUrl: 'https://www.youtube.com/@PeachGaming' },
+            { title: 'Dynamo Gaming', channelUrl: 'https://www.youtube.com/dynamogaming' },
+            { title: 'S4sh', channelUrl: 'https://www.youtube.com/@s4shhhexe' },
             // Row 3
             { title: 'Vibhors Verse', channelUrl: 'https://www.youtube.com/@vibhorsverse8535' },
             { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
             { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
-            { title: 'Peach Gaming', channelUrl: 'https://www.youtube.com/@PeachGaming' },
-            { title: 'Doctor Narcos', channelUrl: 'https://www.youtube.com/@DoctorNarcos/shorts' },
+            { title: 'S4sh', channelUrl: 'https://www.youtube.com/@s4shhhexe' },
+            { title: 'Dynamo Gaming', channelUrl: 'https://www.youtube.com/dynamogaming' },
           ]} />
         </section>
 
@@ -767,12 +769,11 @@ export default function CreatorPage() {
           <p className="hz-section-label">PORTFOLIO · REELS</p>
           <h2 className="hz-section-heading">SELECTED WORK</h2>
           <ReelCarousel videos={[
+            'https://res.cloudinary.com/dpuovefvs/video/upload/v1792092415/snapgram.io_1zescuajntue_af5in7.mp4',
+            'https://res.cloudinary.com/dpuovefvs/video/upload/v1792092553/snapgram.io_3f15uv2e9h7q_nb2uta.mp4',
+            'https://res.cloudinary.com/dpuovefvs/video/upload/v1792094480/vidssave.com_paypal_or_people__valorant_valorantindia_gamergirl_valorantclips_valorantmoments_gaming_720P_simngj.mp4',
             'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777233966/vid1_nc11bz.mp4',
-            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777235213/Vid2_kln2ha.mp4',
-            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777235272/Vid3_ntpwdw.mp4',
-            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777235289/Vid5_d0rs29.mp4',
             'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777234062/vid6_usi9t4.mp4'
-
           ]} />
         </section>
 

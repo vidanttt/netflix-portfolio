@@ -255,7 +255,7 @@
 /* Mobile: bigger statue and shifted up */
 @media (max-width: 768px) {
   .hz-hero-title-wrapper {
-    top: 38%;
+    top: 32%;
     transform: translateY(-62%);
   }
 
