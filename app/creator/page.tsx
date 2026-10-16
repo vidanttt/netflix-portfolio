@@ -17,6 +17,7 @@ import GlareHover from '@/components/GlareHover'
 import BorderGlow from '@/components/BorderGlow'
 import CircularCarousel from '@/components/CircularCarousel';
 import StatueRelief from '@/components/StatueRelief';
+import AnimatedContent from '@/components/AnimatedContent';
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -36,10 +37,12 @@ function AboutSection() {
   return (
     <section id="about" className="hz-section">
       {/* Section label */}
-      <p className="hz-section-label">ABOUT ME</p>
-      <h2 className="hz-section-heading">VIDAANT</h2>
+      <AnimatedContent distance={46} blur={8} duration={0.9} stagger={0.12} threshold={0.2} ease="power3.out">
+        <p className="hz-section-label">ABOUT ME</p>
+        <h2 className="hz-section-heading">VIDAANT</h2>
+      </AnimatedContent>
 
-      <div className="hz-about-grid">
+      <AnimatedContent className="hz-about-grid" distance={90} blur={10} duration={1} stagger={0.15} threshold={0.12} ease="power3.out">
 
         {/* ─ Left: Bio card ─ */}
         <BorderGlow
@@ -176,7 +179,7 @@ function AboutSection() {
           </BorderGlow>
 
         </div>
-      </div>
+      </AnimatedContent>
     </section>
   );
 }
@@ -197,8 +200,10 @@ function WorkSection() {
   return (
     <section id="work" className="hz-section">
       <div className="hz-divider" style={{ marginBottom: '10rem' }} />
-      <p className="hz-section-label">SELECTED PROJECTS</p>
-      <h2 className="hz-section-heading">MY WORK</h2>
+      <AnimatedContent distance={46} blur={8} duration={0.9} stagger={0.12} threshold={0.2} ease="power3.out">
+        <p className="hz-section-label">SELECTED PROJECTS</p>
+        <h2 className="hz-section-heading">MY WORK</h2>
+      </AnimatedContent>
 
       {/* Showreel placeholder */}
       <div className="hz-reel-wrapper">
@@ -288,11 +293,13 @@ function SkillsSection() {
   return (
     <section id="skills" className="hz-section">
       <div className="hz-divider" style={{ marginBottom: '4rem' }} />
-      <p className="hz-section-label">TOOLS & EXPERTISE</p>
-      <h2 className="hz-section-heading">SKILLS</h2>
+      <AnimatedContent distance={46} blur={8} duration={0.9} stagger={0.12} threshold={0.2} ease="power3.out">
+        <p className="hz-section-label">TOOLS & EXPERTISE</p>
+        <h2 className="hz-section-heading">SKILLS</h2>
+      </AnimatedContent>
 
       {/* Software TiltedCards — horizontal row */}
-      <div className="hz-skills-cards-grid">
+      <AnimatedContent className="hz-skills-cards-grid" distance={70} tilt={28} duration={0.9} stagger={0.1} staggerFrom="center" threshold={0.12} ease="back.out(1.5)">
         {software.map((s) => (
           <div key={s.label} className="cursor-target hz-skill-card-item">
             <TiltedCard
@@ -316,7 +323,7 @@ function SkillsSection() {
             />
           </div>
         ))}
-      </div>
+      </AnimatedContent>
 
       {/* Skill bars */}
       {/* <div className="hz-skill-bar-wrap">
@@ -346,7 +353,7 @@ function ContactSection() {
       <p className="hz-section-label">GET IN TOUCH</p>
 
       <div className="hz-contact-inner">
-        <div>
+        <AnimatedContent distance={60} blur={8} duration={0.9} stagger={0.12} threshold={0.15} ease="power3.out">
           <h2 className="hz-contact-heading">WANNA CONNECT?</h2>
           <p className="hz-contact-subtext">
             Drop me a mail and lets connect :)
@@ -359,7 +366,7 @@ function ContactSection() {
               <a key={s} href="#" className="hz-social-btn cursor-target">{s}</a>
             ))}
           </div>
-        </div>
+        </AnimatedContent>
 
         {/* <div className="hz-card" style={{ alignSelf: 'center' }}>
           <h4 style={{
@@ -701,8 +708,11 @@ export default function CreatorPage() {
         {/* ────── VIDEO CAROUSEL ────── */}
         <section id="video-carousel" className="hz-section" style={{ paddingTop: '2rem', paddingBottom: isMobile ? '3rem' : '0' }}>
           <div className="hz-divider" style={{ marginBottom: '4rem' }} />
-          <p className="hz-section-label">:)</p>
-          <h2 className="hz-section-heading">SHOWREELS</h2>
+          <AnimatedContent distance={46} blur={8} duration={0.9} stagger={0.12} threshold={0.2} ease="power3.out">
+            <p className="hz-section-label">:)</p>
+            <h2 className="hz-section-heading">SHOWREELS</h2>
+          </AnimatedContent>
+          <AnimatedContent distance={80} duration={1.1} threshold={0.1} ease="power3.out">
           <div style={{ height: isMobile ? '90vw' : '900px', width: '100%', marginTop: isMobile ? '-1.5rem' : undefined }}>
             <CircularCarousel
               items={[
@@ -721,10 +731,12 @@ export default function CreatorPage() {
               fitWidth={isMobile ? 1.7 : undefined}
             />
           </div>
+          </AnimatedContent>
         </section>
 
         {/* ────── SECTION 2.5: QUICK STATS ────── */}
         <section id="stats" className="hz-stats-section" style={{ position: 'relative', width: '100vw' }}>
+          <AnimatedContent className="h-full w-full" distance={70} blur={10} duration={1} threshold={0.1} ease="power3.out">
           <FlowingMenu
             items={statItems}
             speed={15}
@@ -734,6 +746,7 @@ export default function CreatorPage() {
             marqueeTextColor="#000000"
             borderColor="#39FF14"
           />
+          </AnimatedContent>
         </section>
 
         {/* ────── SECTION 3: WORK — Parallax Grid ────── */}
@@ -764,8 +777,11 @@ export default function CreatorPage() {
         {/* ────── SECTION 3.5: REEL CAROUSEL ────── */}
         <section id="reels" className="hz-section" style={{ paddingTop: '4rem', paddingBottom: '4rem', position: 'relative', zIndex: 10, isolation: 'isolate' }}>
           <div className="hz-divider" style={{ marginBottom: '4rem' }} />
-          <p className="hz-section-label">PORTFOLIO · REELS</p>
-          <h2 className="hz-section-heading">SELECTED WORK</h2>
+          <AnimatedContent distance={46} blur={8} duration={0.9} stagger={0.12} threshold={0.2} ease="power3.out">
+            <p className="hz-section-label">PORTFOLIO · REELS</p>
+            <h2 className="hz-section-heading">SELECTED WORK</h2>
+          </AnimatedContent>
+          <AnimatedContent distance={80} blur={8} duration={1} threshold={0.12} ease="power3.out">
           <ReelCarousel videos={[
             'https://res.cloudinary.com/dpuovefvs/video/upload/v1792092415/snapgram.io_1zescuajntue_af5in7.mp4',
             'https://res.cloudinary.com/dpuovefvs/video/upload/v1792092553/snapgram.io_3f15uv2e9h7q_nb2uta.mp4',
@@ -773,6 +789,7 @@ export default function CreatorPage() {
             'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777233966/vid1_nc11bz.mp4',
             'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777234062/vid6_usi9t4.mp4'
           ]} />
+          </AnimatedContent>
         </section>
 
         {/* ────── SECTION 4: SKILLS ────── */}

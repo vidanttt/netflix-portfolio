@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import LoadingScreen from '@/components/LoadingScreen';
+import { beginLoading, endLoading } from '@/lib/loadingState';
 import { preloadAllAssets, getCreatorPageManifest } from '@/lib/preloadAssets';
 
 interface TransitionContextType {
@@ -63,6 +64,13 @@ export default function TransitionProvider({ children }: { children: React.React
       setLoadProgress(100);
     });
   }, [showLoading, pathname]);
+
+  // Tell the rest of the app (e.g. the music player) while this loading screen is up
+  useEffect(() => {
+    if (!showLoading) return undefined;
+    beginLoading();
+    return endLoading;
+  }, [showLoading]);
 
   const startTransition = useCallback(() => {
     // Reset state for a fresh transition

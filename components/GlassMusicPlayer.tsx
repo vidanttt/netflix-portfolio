@@ -135,6 +135,23 @@ const GlassMusicPlayer = ({ songs = defaultPlaylist }: Props) => {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
 
+    // Home position is the bottom-right corner. Until the visitor drags the player themselves
+    // it drifts slowly around that spot to catch the eye; after a drag it stays put for good.
+    const movedRef = useRef(false);
+    const holdRef = useRef(false); // pointer is on the player: hold still so it's easy to click
+    const expandedRef = useRef(false);
+    const placedRef = useRef(false);
+    const anchorRef = useRef({ x: 0, y: 0, left: -9999, top: -9999, right: 9999, bottom: 9999, ready: false });
+    useLayoutEffect(() => {
+        try {
+            if (localStorage.getItem("bd-music-moved") === "1") movedRef.current = true;
+        } catch {
+            /* storage unavailable */
+        }
+    }, []);
+
+    expandedRef.current = expanded;
+
     // viewport drag constraints
     const [constraints, setConstraints] = useState({
         top: -9999,
@@ -159,6 +176,18 @@ const GlassMusicPlayer = ({ songs = defaultPlaylist }: Props) => {
             const bottom = window.innerHeight - r.height - pad - originTop;
             setConstraints({ left, top, right, bottom });
 
+            // bottom-right anchor, with room around it for the drift
+            const edge = 44;
+            const ax = Math.max(left, right - (edge - pad));
+            const ay = Math.max(top, bottom - (edge - pad));
+            anchorRef.current = { x: ax, y: ay, left, top, right, bottom, ready: true };
+            if (!movedRef.current && !placedRef.current) {
+                placedRef.current = true;
+                x.set(ax);
+                y.set(ay);
+                return;
+            }
+
             const clampedX = Math.min(Math.max(cx, left), right);
             const clampedY = Math.min(Math.max(cy, top), bottom);
             if (clampedX !== cx) animate(x, clampedX, { type: "spring", stiffness: 220, damping: 26 });
@@ -173,6 +202,27 @@ const GlassMusicPlayer = ({ songs = defaultPlaylist }: Props) => {
             window.removeEventListener("resize", recompute);
         };
     }, [expanded, x, y]);
+
+    // Gentle attention-grabbing drift around the bottom-right corner (never once the user has moved it)
+    useEffect(() => {
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+        let raf = 0;
+        const t0 = performance.now();
+        const loop = (now: number) => {
+            raf = requestAnimationFrame(loop);
+            const a = anchorRef.current;
+            if (!a.ready || movedRef.current || expandedRef.current || holdRef.current || document.hidden) return;
+            const t = (now - t0) / 1000;
+            const dx = Math.sin(t * 0.45) * 30 + Math.sin(t * 0.17 + 1.2) * 14;
+            const dy = Math.cos(t * 0.38) * 22 + Math.sin(t * 0.21 + 0.6) * 10;
+            const tx = Math.min(Math.max(a.x + dx, a.left), a.right);
+            const ty = Math.min(Math.max(a.y + dy, a.top), a.bottom);
+            x.set(x.get() + (tx - x.get()) * 0.05);
+            y.set(y.get() + (ty - y.get()) * 0.05);
+        };
+        raf = requestAnimationFrame(loop);
+        return () => cancelAnimationFrame(raf);
+    }, [x, y]);
 
     // Update audio duration when song changes
     useEffect(() => {
@@ -306,9 +356,25 @@ const GlassMusicPlayer = ({ songs = defaultPlaylist }: Props) => {
             dragElastic={0.18}
             dragConstraints={constraints}
             dragTransition={{ power: 0.25, timeConstant: 240, bounceStiffness: 220, bounceDamping: 26 }}
-            onPointerDown={startDragIfAllowed}
+            onPointerDown={(e) => {
+                holdRef.current = true;
+                startDragIfAllowed(e);
+            }}
+            onPointerEnter={() => {
+                holdRef.current = true;
+            }}
+            onPointerLeave={() => {
+                holdRef.current = false;
+            }}
             onDragStart={() => {
                 draggedRef.current = true;
+                // the visitor has taken control: stop drifting, for good
+                movedRef.current = true;
+                try {
+                    localStorage.setItem("bd-music-moved", "1");
+                } catch {
+                    /* storage unavailable */
+                }
             }}
             onDragEnd={() => {
                 setTimeout(() => (draggedRef.current = false), 50);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { beginLoading, endLoading } from '@/lib/loadingState';
 
 interface NetflixLoaderProps {
   onComplete: () => void;
@@ -8,6 +9,11 @@ interface NetflixLoaderProps {
 
 export default function NetflixLoader({ onComplete }: NetflixLoaderProps) {
   const [currentStep, setCurrentStep] = useState(0);
+
+  useEffect(() => {
+    beginLoading();
+    return endLoading;
+  }, []);
 
   useEffect(() => {
     const steps = [

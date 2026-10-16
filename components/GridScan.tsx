@@ -549,6 +549,9 @@ export const GridScan = ({
   const wakeRef = useRef<(() => void) | null>(null);
   const headRef = useRef<Head | null>(null);
   const [status, setStatus] = useState<Status>('loading');
+  // Bumped to throw the canvas away and build a fresh WebGL context (see the init effect)
+  const [attempt, setAttempt] = useState(0);
+  const attemptRef = useRef(0);
   const settings: Settings = {
     linesColor: linesColor ?? (lightMode ? '#d4d4d8' : '#4d4757'),
     scanColor: scanColor ?? (lightMode ? '#0284c7' : '#7dd3fc'),
@@ -590,13 +593,33 @@ export const GridScan = ({
       depth: false,
       stencil: false
     });
-    if (!container || !canvas || !gl) return undefined;
+    // The room can fail to come up (no context, a context the browser already dropped, shader
+    // link failure). Rather than staying blank forever, rebuild it on a fresh canvas a few times.
+    let retryTimer = 0;
+    const retry = () => {
+      if (retryTimer || attemptRef.current >= 5) return;
+      attemptRef.current += 1;
+      retryTimer = window.setTimeout(() => {
+        retryTimer = 0;
+        setAttempt(n => n + 1);
+      }, 250);
+    };
+    const abandonRetry = () => window.clearTimeout(retryTimer);
+
+    if (!container || !canvas) return undefined;
+    if (!gl || gl.isContextLost()) {
+      retry();
+      return abandonRetry;
+    }
 
     const room = link(gl, ROOM);
     const down = link(gl, DOWN);
     const blur = link(gl, BLUR);
     const composite = link(gl, COMPOSITE);
-    if (!room || !down || !blur || !composite) return undefined;
+    if (!room || !down || !blur || !composite) {
+      retry();
+      return abandonRetry;
+    }
     const vao = gl.createVertexArray();
     const scene = createTarget(gl);
     const light = createTarget(gl);
@@ -636,6 +659,7 @@ export const GridScan = ({
     const pings: Ping[] = [];
     const pingData = new Float32Array(MAX_PINGS * 4);
     const pingAlpha = new Float32Array(MAX_PINGS);
+    let drawnOnce = false;
     let time = 0;
     let introClock = settingsRef.current.intro && !reduce ? 0 : 1;
     let raf = 0;
@@ -881,6 +905,10 @@ export const GridScan = ({
       }
 
       draw();
+      if (!drawnOnce) {
+        drawnOnce = true;
+        attemptRef.current = 0; // healthy: reset the retry budget
+      }
 
       const settling =
         Math.abs(eye.tx - eye.x) + Math.abs(eye.ty - eye.y) + Math.abs(eye.tf - eye.f) > 1e-4 ||
@@ -1004,12 +1032,27 @@ export const GridScan = ({
         wake();
       }
     };
+    // If the browser drops the context (GPU reset, too many contexts, tab discarded), rebuild.
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+      retry();
+    };
+    canvas.addEventListener('webglcontextlost', onContextLost);
+
+    // If nothing has been drawn a couple of seconds after mounting (while visible), start over.
+    const watchdog = window.setTimeout(() => {
+      if (!drawnOnce && !document.hidden && visible) retry();
+    }, 2500);
+
     resize();
     wakeRef.current = wake;
 
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(leaveTimer);
+      window.clearTimeout(watchdog);
+      abandonRetry();
+      canvas.removeEventListener('webglcontextlost', onContextLost);
       wakeRef.current = null;
       headRef.current = null;
       resizeObserver.disconnect();
@@ -1024,9 +1067,12 @@ export const GridScan = ({
       [sceneBuffer, bloomBufferA, bloomBufferB].forEach(buffer => gl.deleteFramebuffer(buffer));
       gl.deleteVertexArray(vao);
       [room, down, blur, composite].forEach(item => gl.deleteProgram(item.program));
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      // Only free the context when the canvas is really going away. During React's dev
+      // double-mount (or any re-run) the same canvas is reused, and a context we have
+      // force-lost would be handed straight back dead.
+      if (!canvas.isConnected) gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, []);
+  }, [attempt]);
 
   useEffect(() => {
     wakeRef.current?.();
@@ -1121,7 +1167,7 @@ export const GridScan = ({
       style={style}
       {...rest}
     >
-      <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
+      <canvas key={attempt} ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
       {enableWebcam && (
         <div
           className={
