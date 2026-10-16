@@ -54,8 +54,12 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
 
-  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-  const isAuthorizedAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === adminEmail;
+  // Compare case-insensitively against every email on the account, not just the primary one
+  const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').trim().toLowerCase();
+  const isAuthorizedAdmin =
+    !!isSignedIn &&
+    !!adminEmail &&
+    !!user?.emailAddresses?.some((e) => e.emailAddress.trim().toLowerCase() === adminEmail);
 
   // Fetch analytics data
   useEffect(() => {

@@ -10,8 +10,8 @@ export async function GET() {
     }
 
     // Check if user has admin privileges
-    const userEmails = user.emailAddresses.map((e) => e.emailAddress);
-    const adminEmail = process.env.ADMIN_EMAIL;
+    const userEmails = user.emailAddresses.map((e) => e.emailAddress.trim().toLowerCase());
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 
     if (!adminEmail || !userEmails.includes(adminEmail)) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });

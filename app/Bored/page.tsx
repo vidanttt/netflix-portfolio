@@ -13,6 +13,7 @@ import SearchOverlay from './components/SearchOverlay';
 import DetailModal from './components/DetailModal';
 import ContinueWatchingRow from './components/ContinueWatchingRow';
 import WatchlistRow from './components/WatchlistRow';
+import CategoryTiles from './components/CategoryTiles';
 import { initAuthStorage } from './lib/storage';
 import { useAuth } from '@clerk/nextjs';
 import './bored.css';
@@ -318,6 +319,9 @@ export default function BoredPage() {
 
         {/* ── Watchlist ── */}
         <WatchlistRow />
+
+        {/* ── Browse by Category ── */}
+        <CategoryTiles />
 
         {/* ── Content Rows ── */}
         <div id="browse">

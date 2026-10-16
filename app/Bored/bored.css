@@ -615,9 +615,14 @@
 .bd-row-scroll {
   display: flex;
   gap: 0.65rem;
-  padding: 0.5rem var(--bd-side-pad);
+  /* Vertical room for the hover scale. overflow-y must be hidden, not visible: with
+     overflow-x:auto a "visible" y computes to auto, so the scaled card made the row
+     scrollable vertically and it swallowed the mouse wheel instead of the page. */
+  padding: 0.9rem var(--bd-side-pad);
+  margin: -0.4rem 0;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
+  overscroll-behavior-y: auto;
   scroll-behavior: smooth;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -2385,3 +2390,74 @@
 }
 
 /* Clerk Auth overrides moved globally to app/globals.css */
+
+/* ============================================================
+   BROWSE BY CATEGORY
+   ============================================================ */
+.bd-cat-tiles {
+  display: flex;
+  gap: 1.1rem;
+  padding: 0.5rem var(--bd-side-pad) 0.75rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.bd-cat-tiles::-webkit-scrollbar { display: none; }
+
+.bd-cat-tile {
+  flex: 0 0 auto;
+  width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.25s ease, transform 0.25s var(--bd-ease);
+}
+.bd-cat-tile:hover,
+.bd-cat-tile:focus-visible {
+  color: #fff;
+  transform: translateY(-3px);
+  outline: none;
+}
+.bd-cat-tile-icon {
+  width: 88px;
+  height: 88px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 2.4rem;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: box-shadow 0.25s ease;
+}
+.bd-cat-tile:hover .bd-cat-tile-icon { box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(255, 255, 255, 0.5); }
+.bd-cat-tile-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.bd-cat-chips {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1.25rem var(--bd-side-pad) 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.bd-cat-chips::-webkit-scrollbar { display: none; }
+.bd-cat-chip {
+  flex: 0 0 auto;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.bd-cat-chip:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.bd-cat-chip-active { background: #fff; color: #000; }
+.bd-cat-chip-active:hover { background: #fff; color: #000; }

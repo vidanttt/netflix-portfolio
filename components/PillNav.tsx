@@ -55,7 +55,11 @@ const PillNav: React.FC<PillNavProps> = ({
 
   // Clerk Auth State
   const { isSignedIn, user } = useUser();
-  const isAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').trim().toLowerCase();
+  const isAdmin =
+    !!isSignedIn &&
+    !!adminEmail &&
+    !!user?.emailAddresses?.some((e) => e.emailAddress.trim().toLowerCase() === adminEmail);
 
   // Dynamically add Admin and Sign In pills
   const finalItems = useMemo(() => {

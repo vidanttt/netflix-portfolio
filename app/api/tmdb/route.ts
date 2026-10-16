@@ -16,6 +16,22 @@ const TMDB_ACCESS_TOKEN = process.env.TMDB_ACCESS_TOKEN;
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
+// A page asks for a whole batch of rows at once; on some networks TMDB resets connections
+// when too many open together. Cap concurrent upstream calls and remember good answers.
+const MAX_CONCURRENT = 3;
+let active = 0;
+const waiting: Array<() => void> = [];
+async function acquire() {
+  if (active >= MAX_CONCURRENT) await new Promise<void>((r) => waiting.push(r));
+  active++;
+}
+function release() {
+  active--;
+  waiting.shift()?.();
+}
+const memory = new Map<string, { at: number; data: unknown }>();
+const MEMORY_TTL = 5 * 60 * 1000;
+
 export async function GET(req: NextRequest) {
   if (!TMDB_ACCESS_TOKEN && !TMDB_API_KEY) {
     return NextResponse.json(
@@ -49,36 +65,55 @@ export async function GET(req: NextRequest) {
     }
   });
 
-  try {
-    const headers: HeadersInit = {
-      accept: 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    };
+  const headers: HeadersInit = {
+    accept: 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  };
 
-    // Prefer Bearer token auth
-    if (TMDB_ACCESS_TOKEN) {
-      headers['Authorization'] = `Bearer ${TMDB_ACCESS_TOKEN}`;
-    }
-
-    const res = await fetch(url.toString(), {
-      headers,
-      next: { revalidate: 300 }, // cache 5 min
-    });
-
-    if (!res.ok) {
-      const body = await res.text();
-      return NextResponse.json(
-        { error: `TMDB responded with ${res.status}`, detail: body },
-        { status: res.status }
-      );
-    }
-
-    const data = await res.json();
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch from TMDB' },
-      { status: 502 }
-    );
+  // Prefer Bearer token auth
+  if (TMDB_ACCESS_TOKEN) {
+    headers['Authorization'] = `Bearer ${TMDB_ACCESS_TOKEN}`;
   }
+
+  // Connections to TMDB reset intermittently on some networks, especially when several
+  // requests fire at once (a page loads a whole batch of rows). Retry transient failures.
+  const MAX_ATTEMPTS = 5;
+  const cacheKey = url.toString();
+  const hit = memory.get(cacheKey);
+  if (hit && Date.now() - hit.at < MEMORY_TTL) return NextResponse.json(hit.data);
+
+  let lastError = '';
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    await acquire();
+    try {
+      const res = await fetch(url.toString(), {
+        headers,
+        next: { revalidate: 300 }, // cache 5 min
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        memory.set(cacheKey, { at: Date.now(), data });
+        return NextResponse.json(data);
+      }
+
+      // Client errors (bad id, bad params, 401/404) won't improve on retry
+      if (res.status < 500 && res.status !== 429) {
+        const body = await res.text();
+        return NextResponse.json(
+          { error: `TMDB responded with ${res.status}`, detail: body },
+          { status: res.status }
+        );
+      }
+      lastError = `TMDB responded with ${res.status}`;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : 'fetch failed';
+    } finally {
+      release();
+    }
+    await new Promise((r) => setTimeout(r, 250 * (attempt + 1) ** 2));
+  }
+
+  console.error('TMDB proxy failed after retries:', lastError);
+  return NextResponse.json({ error: 'Failed to fetch from TMDB' }, { status: 502 });
 }

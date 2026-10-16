@@ -5,18 +5,21 @@
 
 import type { PlayerProvider } from './types';
 
+// Videasy moved its embeds: the old player.videasy.net/movie/... now 301-redirects to a
+// regular site page, while the documented embed player lives at player.videasy.ws/embed/...
+// (see https://videasy.ws/docs.html). autoplay=1 starts playback without the extra click.
 export const VideasyProvider: PlayerProvider = {
   name: 'Videasy',
-  getMovieUrl: (tmdbId: number) => `https://player.videasy.net/movie/${tmdbId}`,
+  getMovieUrl: (tmdbId: number) => `https://player.videasy.ws/embed/movie/${tmdbId}?autoplay=1`,
   getTVUrl: (tmdbId: number, season: number, episode: number) =>
-    `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`,
+    `https://player.videasy.ws/embed/tv/${tmdbId}/${season}/${episode}?autoplay=1&autonext=1`,
 };
 
 export const VidsrcProvider: PlayerProvider = {
   name: 'VidSrc',
-  getMovieUrl: (tmdbId: number) => `https://vidsrc.xyz/embed/movie/${tmdbId}`,
+  getMovieUrl: (tmdbId: number) => `https://vidsrc.sh/embed/movie/${tmdbId}`,
   getTVUrl: (tmdbId: number, season: number, episode: number) =>
-    `https://vidsrc.xyz/embed/tv/${tmdbId}/${season}/${episode}`,
+    `https://vidsrc.sh/embed/tv/${tmdbId}/${season}/${episode}`,
 };
 
 export const EmbedSuProvider: PlayerProvider = {
@@ -35,9 +38,9 @@ export const AutoembedProvider: PlayerProvider = {
 
 export const NontonGoProvider: PlayerProvider = {
   name: 'NontonGo',
-  getMovieUrl: (tmdbId: number) => `https://www.NontonGo.win/embed/movie/${tmdbId}`,
+  getMovieUrl: (tmdbId: number) => `https://nontongo.win/embed/movie/${tmdbId}`,
   getTVUrl: (tmdbId: number, season: number, episode: number) =>
-    `https://www.NontonGo.win/embed/tv/${tmdbId}/${season}/${episode}`,
+    `https://nontongo.win/embed/tv/${tmdbId}/${season}/${episode}`,
 };
 
 export const Twoembed: PlayerProvider = {
@@ -50,11 +53,11 @@ export const Twoembed: PlayerProvider = {
 /* ── Ordered list — fallback goes top to bottom ── */
 export const ALL_PROVIDERS: PlayerProvider[] = [
   VideasyProvider,
+  NontonGoProvider,
+  Twoembed,
   VidsrcProvider,
   EmbedSuProvider,
   AutoembedProvider,
-  NontonGoProvider,
-  Twoembed,
 ];
 
 export const defaultProvider = VideasyProvider;
