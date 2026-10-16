@@ -4,7 +4,7 @@ import {
     motion,
     type Easing,
 } from "framer-motion";
-import Counter from "@/components/Counter";
+import CountUp from "@/components/CountUp";
 
 export interface LoadingScreenProps {
     /** Minimum duration before the screen can dismiss, in seconds. Default: 2.5s */
@@ -51,6 +51,18 @@ const LoadingScreen = ({
 
     const hasExternalProgress = externalProgress !== undefined;
     const minTimeElapsed = useRef(false);
+
+    const latestCounter = useRef(0);
+    latestCounter.current = counterValue;
+    const [shownValue, setShownValue] = useState(0);
+    useEffect(() => {
+        const id = setInterval(() => setShownValue((prev) => (prev === latestCounter.current ? prev : latestCounter.current)), 320);
+        return () => clearInterval(id);
+    }, []);
+    // reaching 100 shows immediately, never a beat behind the split animation
+    useEffect(() => {
+        if (counterValue >= 100) setShownValue(100);
+    }, [counterValue]);
     const startTime = useRef(Date.now());
 
     // ── Dynamic counter that follows real progress ──
@@ -188,18 +200,19 @@ const LoadingScreen = ({
                                             "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.4), transparent 65%)",
                                     }}
                                 />
-                                <Counter
-                                    value={counterValue}
-                                    fontSize={counterFontSize}
-                                    places={[100, 10, 1]}
-                                    gap={4}
-                                    textColor="rgba(255,255,255,0.92)"
-                                    fontWeight={200}
-                                    borderRadius={0}
-                                    horizontalPadding={0}
-                                    gradientFrom={backgroundColor}
-                                    gradientTo="transparent"
-                                    gradientHeight={20}
+                                <CountUp
+                                    to={shownValue}
+                                    from={0}
+                                    mode="roll"
+                                    easing="spring"
+                                    duration={1}
+                                    trigger="load"
+                                    style={{
+                                        fontSize: counterFontSize,
+                                        fontWeight: 900,
+                                        lineHeight: 1.2,
+                                        color: "rgba(255,255,255,0.92)",
+                                    }}
                                 />
                                 <span
                                     style={{
@@ -280,16 +293,18 @@ const LoadingScreen = ({
                                 />
                                 {/* "100%" anchored at bottom-center of top half */}
                                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 flex items-baseline gap-2">
-                                    <Counter
-                                        value={100}
-                                        fontSize={counterFontSize}
-                                        places={[100, 10, 1]}
-                                        gap={4}
-                                        textColor="rgba(255,255,255,0.85)"
-                                        fontWeight={200}
-                                        borderRadius={0}
-                                        horizontalPadding={0}
-                                        gradientHeight={0}
+                                    <CountUp
+                                        to={100}
+                                        from={100}
+                                        mode="count"
+                                        trigger="load"
+                                        duration={0}
+                                        style={{
+                                            fontSize: counterFontSize,
+                                            fontWeight: 900,
+                                            lineHeight: 1.2,
+                                            color: "rgba(255,255,255,0.85)",
+                                        }}
                                     />
                                     <span
                                         style={{
@@ -322,16 +337,18 @@ const LoadingScreen = ({
                                 />
                                 {/* "100%" anchored at top-center of bottom half */}
                                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-baseline gap-2">
-                                    <Counter
-                                        value={100}
-                                        fontSize={counterFontSize}
-                                        places={[100, 10, 1]}
-                                        gap={4}
-                                        textColor="rgba(255,255,255,0.85)"
-                                        fontWeight={200}
-                                        borderRadius={0}
-                                        horizontalPadding={0}
-                                        gradientHeight={0}
+                                    <CountUp
+                                        to={100}
+                                        from={100}
+                                        mode="count"
+                                        trigger="load"
+                                        duration={0}
+                                        style={{
+                                            fontSize: counterFontSize,
+                                            fontWeight: 900,
+                                            lineHeight: 1.2,
+                                            color: "rgba(255,255,255,0.85)",
+                                        }}
                                     />
                                     <span
                                         style={{

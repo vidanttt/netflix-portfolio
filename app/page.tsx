@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ProfileCard from './components/ProfileCard';
 import NetflixLoader from './components/NetflixLoader';
+import ParticleText from '@/components/ParticleText';
 import GridScan from '@/components/GridScan';
 import { usePageTransition } from '@/components/TransitionProvider';
 
@@ -107,6 +108,16 @@ export default function Home() {
   const floorCards = useRef<HTMLDivElement>(null);
   const floorButton = useRef<HTMLDivElement>(null);
   const textWidth = useRef(480);
+  // iOS only hands out gyroscope data after an explicit tap, so offer one
+  const [needMotion, setNeedMotion] = useState(false);
+  useEffect(() => {
+    const D = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
+    if (typeof D?.requestPermission === 'function' && window.matchMedia('(pointer: coarse)').matches) setNeedMotion(true);
+  }, []);
+  const askMotion = () => {
+    const D = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> };
+    D.requestPermission?.().catch(() => {}).finally(() => setNeedMotion(false));
+  };
   /* The room, in the grid's own units (screen height = 1, screen plane at z = 0, back wall at
      z = 3, floor at y = -0.5, eye F in front of the screen). A point at depth z that the eye
      looks at from offset (ex, ey) shows up on the screen at
@@ -119,7 +130,7 @@ export default function Home() {
     ny = Math.max(-0.8, Math.min(0.8, ny));
     const W = window.innerWidth;
     const H = window.innerHeight;
-    const eyeX = nx * 0.22 * (W / H); // eye offset, in screen-heights
+    const eyeX = nx * 0.22 * Math.max(W / H, 0.95); // eye offset, in screen-heights
     const eyeY = ny * 0.22;
 
     // [layer, depth behind the screen in screen-heights, lean in degrees, size it should appear at]
@@ -244,6 +255,7 @@ export default function Home() {
           scanDelay={1.6}
           clickEffect="ping"
           onEye={handleEye}
+          enableGyro
         />
         {/* shadows on the floor of the room (positioned every frame from the grid's camera) */}
         <div ref={floorHeading} className="room-shadow" aria-hidden="true" />
@@ -256,6 +268,16 @@ export default function Home() {
         />
       </div>
 
+      {needMotion && !showLoader && (
+        <button
+          type="button"
+          onClick={askMotion}
+          className="fixed left-1/2 top-4 z-30 -translate-x-1/2 rounded-full border border-white/20 bg-black/55 px-4 py-2 text-xs font-medium tracking-wide text-white/85 backdrop-blur-md"
+        >
+          Tap to enable tilt
+        </button>
+      )}
+
       <div ref={stageRef} className="relative z-10 w-full max-w-6xl mx-auto text-center" style={{ perspective: '1135px' }}>
         {/* Netflix Logo */}
         {/* <div className="mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
@@ -266,8 +288,35 @@ export default function Home() {
 
         {/* Who's watching heading */}
         <div ref={headingLayer} style={{ willChange: 'transform' }}>
-          <h2 ref={h2Ref} className="text-white text-4xl md:text-6xl font-light mb-12 md:mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.3s', animationFillMode: 'forwards', textShadow: '0 18px 30px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.35)' }}>
-            Who's Watching?
+          <h2
+            ref={h2Ref}
+            aria-label="Who's Watching?"
+            className="text-white mb-10 md:mb-14 animate-fade-in-up opacity-0 h-[120px] md:h-[160px] w-full"
+            style={{ animationDelay: '0.3s', animationFillMode: 'forwards', filter: 'drop-shadow(0 14px 22px rgba(0,0,0,0.55))' }}
+          >
+            <ParticleText
+              text="Who's Watching?"
+              particleSize={2}
+              density={4}
+              color="currentColor"
+              highlightColor="#e50914"
+              highlightMode="motion"
+              shape="circle"
+              intro="gather"
+              scatter={180}
+              gatherDuration={1600}
+              stagger={420}
+              clickBurst
+              burstStrength={1}
+              pointerRepel={40}
+              repelRadius={120}
+              idleDrift={0.7}
+              trigger="mount"
+              fontSize="clamp(3rem, 9vw, 5.75rem)"
+              fontWeight={800}
+              fontFamily="inherit"
+              glow
+            />
           </h2>
         </div>
 

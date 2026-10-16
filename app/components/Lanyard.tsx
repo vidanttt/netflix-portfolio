@@ -18,7 +18,6 @@ import {
   useSphericalJoint,
   RigidBodyProps,
 } from "@react-three/rapier";
-import { MeshLineGeometry, MeshLineMaterial } from "meshline";
 import * as THREE from "three";
 
 interface LanyardProps {
@@ -252,8 +251,67 @@ function useProfileCardTexture(): THREE.Texture | null {
   return tex;
 }
 
+/* ── Ribbon strap ───────────────────────────────────────────────────────
+   The strap is a flat ribbon of geometry that follows the rope's curve (the approach the
+   newer React Bits Lanyard uses), textured with a dark webbing and the GitHub mark repeated
+   along its length. Only the strap changed; the card and physics are untouched. */
+const RIBBON_POINTS = 56;
+const RIBBON_WIDTH = 0.44; // world units
+const TILE_RATIO = 2.1; // texture tile length / strap width
+
+// GitHub "mark" (Octicons mark-github, MIT licence), drawn from its 16×16 path
+const GITHUB_MARK =
+  "M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z";
+
+function paintStrapTexture(): HTMLCanvasElement {
+  const across = 256;
+  const along = Math.round(across * TILE_RATIO);
+  const c = document.createElement("canvas");
+  c.width = across;
+  c.height = along;
+  const ctx = c.getContext("2d")!;
+
+  // webbing: near-black with a faint weave
+  ctx.fillStyle = "#0c0c0e";
+  ctx.fillRect(0, 0, across, along);
+  ctx.fillStyle = "rgba(255,255,255,0.045)";
+  for (let y = 0; y < along; y += 5) ctx.fillRect(0, y, across, 1);
+
+  // stitched edges
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  for (let y = 6; y < along; y += 18) {
+    ctx.fillRect(across * 0.07, y, 3, 9);
+    ctx.fillRect(across * 0.93 - 3, y, 3, 9);
+  }
+
+  // the GitHub mark, centred in each tile
+  const size = across * 0.64;
+  ctx.save();
+  ctx.translate((across - size) / 2, (along - size) / 2);
+  ctx.scale(size / 16, size / 16);
+  ctx.fillStyle = "#f5f5f7";
+  ctx.fill(new Path2D(GITHUB_MARK));
+  ctx.restore();
+  return c;
+}
+
+function buildRibbonGeometry() {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(RIBBON_POINTS * 2 * 3), 3));
+  const normals = new Float32Array(RIBBON_POINTS * 2 * 3);
+  for (let i = 0; i < RIBBON_POINTS * 2; i++) normals[i * 3 + 2] = 1;
+  g.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+  g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(RIBBON_POINTS * 2 * 2), 2));
+  const index: number[] = [];
+  for (let i = 0; i < RIBBON_POINTS - 1; i++) {
+    const a = i * 2;
+    index.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+  }
+  g.setIndex(index);
+  return g;
+}
+
 function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
-  const band = useRef<any>(null);
   const fixed = useRef<any>(null);
   const j1 = useRef<any>(null);
   const j2 = useRef<any>(null);
@@ -264,6 +322,8 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
   const ang = new THREE.Vector3();
   const rot = new THREE.Vector3();
   const dir = new THREE.Vector3();
+  const hook = new THREE.Vector3();
+  const hookQuat = new THREE.Quaternion();
 
   const segmentProps: any = {
     type: "dynamic" as RigidBodyProps["type"],
@@ -352,15 +412,44 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
           delta * (minSpeed + clampedDistance * (maxSpeed - minSpeed))
         );
       });
-      curve.points[0].copy(j3.current.translation());
+      // The strap ends at the card's metal clip. The clip sits higher on the card at the larger
+      // small-screen scale, so follow the clip itself (card body position + rotation) instead
+      // of the fixed joint point, otherwise the ribbon comes loose from the hook on resize.
+      const cardScale = isSmall ? 3.0 : 2.25;
+      const cq = card.current.rotation();
+      hook.set(0, -1.2 + 1.1 * cardScale, -0.05).applyQuaternion(hookQuat.set(cq.x, cq.y, cq.z, cq.w)).add(card.current.translation());
+      curve.points[0].copy(hook);
       curve.points[1].copy(j2.current.lerped);
       curve.points[2].copy(j1.current.lerped);
       curve.points[3].copy(fixed.current.translation());
 
-      // Update the line geometry with new points
-      if (band.current) {
-        lineGeometry.setPoints(curve.getPoints(32));
+      // Rebuild the ribbon along the rope's curve
+      const pts = curve.getPoints(RIBBON_POINTS - 1);
+      let length = 0;
+      for (let i = 1; i < pts.length; i++) length += pts[i].distanceTo(pts[i - 1]);
+      const repeats = length / (RIBBON_WIDTH * TILE_RATIO);
+      const pos = ribbonGeometry.getAttribute("position") as THREE.BufferAttribute;
+      const uvs = ribbonGeometry.getAttribute("uv") as THREE.BufferAttribute;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[Math.max(0, i - 1)];
+        const b = pts[Math.min(pts.length - 1, i + 1)];
+        let tx = b.x - a.x;
+        let ty = b.y - a.y;
+        const tl = Math.hypot(tx, ty) || 1;
+        tx /= tl;
+        ty /= tl;
+        // sideways on screen, perpendicular to the strap
+        const sx = -ty * (RIBBON_WIDTH / 2);
+        const sy = tx * (RIBBON_WIDTH / 2);
+        const p = pts[i];
+        pos.setXYZ(i * 2, p.x - sx, p.y - sy, p.z);
+        pos.setXYZ(i * 2 + 1, p.x + sx, p.y + sy, p.z);
+        const v = (i / (pts.length - 1)) * repeats;
+        uvs.setXY(i * 2, 0, v);
+        uvs.setXY(i * 2 + 1, 1, v);
       }
+      pos.needsUpdate = true;
+      uvs.needsUpdate = true;
       ang.copy(card.current.angvel());
       rot.copy(card.current.rotation());
       card.current.setAngvel({ x: ang.x, y: ang.y - rot.y * 0.1, z: ang.z }); // Reduced rotation damping for more natural movement
@@ -370,21 +459,35 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
   curve.curveType = "chordal";
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
 
-  // Create line geometry and material
-  const lineGeometry = useMemo(() => new MeshLineGeometry(), []);
-
-  const lineMaterial = useMemo(
+  // Ribbon strap: geometry, GitHub-mark webbing texture and material
+  const ribbonGeometry = useMemo(() => buildRibbonGeometry(), []);
+  const ribbonTexture = useMemo(() => {
+    const t = new THREE.CanvasTexture(paintStrapTexture());
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = THREE.ClampToEdgeWrapping;
+    t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 8;
+    return t;
+  }, []);
+  const ribbonMaterial = useMemo(
     () =>
-      new MeshLineMaterial({
-        color: "#ffffff",
-        depthTest: true,
-        resolution: isSmall ? [1000, 2000] : [1000, 1000],
-        useMap: false, // Disable texture for now to make it visible
-        lineWidth: 2,
-        transparent: false,
-        opacity: 1.0,
+      new THREE.MeshPhysicalMaterial({
+        map: ribbonTexture,
+        roughness: 0.62,
+        metalness: 0.05,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.4,
+        side: THREE.DoubleSide,
       }),
-    [isSmall]
+    [ribbonTexture]
+  );
+  useEffect(
+    () => () => {
+      ribbonGeometry.dispose();
+      ribbonTexture.dispose();
+      ribbonMaterial.dispose();
+    },
+    [ribbonGeometry, ribbonTexture, ribbonMaterial]
   );
 
   return (
@@ -453,11 +556,8 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
         </RigidBody>
       </group>
 
-      {/* Rope/Thread using MeshLine */}
-      <mesh ref={band} geometry={lineGeometry} material={lineMaterial} />
-
-      {/* Simple fallback rope - guaranteed to be visible */}
-      <SimpleRope fixed={fixed} j1={j1} j2={j2} j3={j3} card={card} />
+      {/* Ribbon strap with the GitHub mark */}
+      <mesh geometry={ribbonGeometry} material={ribbonMaterial} frustumCulled={false} />
     </>
   );
 }

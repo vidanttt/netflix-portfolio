@@ -251,3 +251,9 @@
 }
 @keyframes dt-blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .dt-caret { animation: none; } }
+
+/* ShapeWaves fills the badge section, under the giant text and the 3D badge */
+.dv-wavebg { position: absolute; inset: 0; z-index: 0; }
+
+/* with the giant heading gone, keep the facts anchored to the bottom of the badge section */
+.dv-behind { justify-content: flex-end; }

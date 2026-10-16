@@ -92,6 +92,8 @@ type FaceScope = { faceapi?: FaceApi };
 const MAX_PINGS = 4;
 const PING_LIFE = 2.4;
 const INTRO_SECONDS = 2.2;
+// on tall, narrow screens the sideways eye travel is scaled up so tilting still moves things as much as hovering does on a desktop
+const MIN_EYE_ASPECT = 0.95;
 const EYE_DISTANCE = 1.25;
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODELS_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
@@ -748,7 +750,7 @@ export const GridScan = ({
     };
 
     const aimEye = (s: Settings) => {
-      const aspect = view.width / view.height;
+      const aspect = Math.max(view.width / view.height, MIN_EYE_ASPECT);
       const drift = reduce ? 0 : 1;
       const nx = look.held ? look.x : (Math.sin(time * 0.21) * 0.2 + Math.sin(time * 0.083 + 1.3) * 0.12) * drift;
       const ny = look.held ? look.y : Math.sin(time * 0.17 + 2.1) * 0.16 * drift;
@@ -874,7 +876,7 @@ export const GridScan = ({
       updateEye(dt);
       if (onEyeRef.current && s.parallax > 0) {
         const range = 0.22 * s.parallax;
-        onEyeRef.current(eye.x / (range * (view.width / view.height)), eye.y / range);
+        onEyeRef.current(eye.x / (range * Math.max(view.width / view.height, MIN_EYE_ASPECT)), eye.y / range);
       }
 
       const aim = s.interactive && pointer.inside && !reduce ? 1 : 0;
@@ -983,7 +985,7 @@ export const GridScan = ({
       const s = settingsRef.current;
       if (!s.enableGyro || headRef.current?.active || reduce || event.gamma === null || event.beta === null) return;
       if (!tilt.ready) Object.assign(tilt, { gamma: event.gamma, beta: event.beta, ready: true });
-      setLook((event.gamma - tilt.gamma) / 25, (event.beta - tilt.beta) / -25, true);
+      setLook((event.gamma - tilt.gamma) / 14, (event.beta - tilt.beta) / -14, true);
       wake();
     };
 

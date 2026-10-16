@@ -5,6 +5,7 @@ import Link from "next/link";
 import gsap from "gsap";
 import DevTerminal from "../components/DevTerminal";
 import Lanyard from "../components/Lanyard";
+import ShapeWaves from "@/components/ShapeWaves";
 import "./developer.css";
 
 export default function DeveloperPage() {
@@ -25,7 +26,6 @@ export default function DeveloperPage() {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: "back.out(1.5)" } });
       tl.from(".dv-nav", { opacity: 0, y: -24, duration: 0.5, clearProps: "all" }, 0)
-        .from(".dv-giant", { opacity: 0, y: 40, duration: 0.7, clearProps: "all" }, 0.1)
         .from(".dv-fact, .dv-stats", { opacity: 0, y: 24, duration: 0.5, stagger: 0.08, clearProps: "all" }, 0.3)
         .from(".dt-window", { opacity: 0, y: 40, scale: 0.97, duration: 0.7, clearProps: "all" }, 0.2)
         .from(".dv-footer", { opacity: 0, duration: 0.5, ease: "power1.out", clearProps: "all" }, 0.5);
@@ -54,12 +54,33 @@ export default function DeveloperPage() {
       <main className="dv-main">
         {/* Left: details sit behind the physics badge */}
         <section className="dv-left" aria-label="Profile badge">
+          {/* Animated field of glyphs and shapes behind the badge; reacts to the pointer */}
+          <div className="dv-wavebg" aria-hidden="true">
+            <ShapeWaves
+              text="</>"
+              color="#929292"
+              hoverColor="#00a9dd"
+              backgroundColor="#000000"
+              shapes="mixed"
+              cellSize={9}
+              dotSize={0.39}
+              textSize={0.6}
+              speed={0.2}
+              scale={0.45}
+              contrast={0.9}
+              brightness={0.16}
+              flow={0.8}
+              direction={0}
+              fade={0.45}
+              interactive
+              splashRadius={14}
+              splashStrength={0.45}
+              glow={3}
+              intro
+              introDuration={1.6}
+            />
+          </div>
           <div className="dv-behind" aria-hidden="true">
-            <div className="dv-giant">
-              Creative
-              <br />
-              <b>Dev</b>
-            </div>
             <div className="dv-facts">
               <div className="dv-fact">
                 <div className="dv-fact-label">Role</div>
