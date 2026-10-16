@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ProfileCard from './components/ProfileCard';
 import NetflixLoader from './components/NetflixLoader';
+import GridScan from '@/components/GridScan';
 import { usePageTransition } from '@/components/TransitionProvider';
 
 interface Profile {
@@ -45,6 +46,25 @@ export default function Home() {
   const [showLoader, setShowLoader] = useState(false);
   const router = useRouter();
   const { startTransition } = usePageTransition();
+
+  // The three content layers sit at different depths inside the grid "room". GridScan
+  // reports its camera offset every frame (-1..1, x right / y up); each layer moves the
+  // way real objects behind a window would when the viewer's head moves, and leans
+  // toward the viewpoint, so the heading, profiles and button feel placed in the room.
+  const headingLayer = useRef<HTMLDivElement>(null);
+  const profilesLayer = useRef<HTMLDivElement>(null);
+  const boredLayer = useRef<HTMLDivElement>(null);
+  const handleEye = useCallback((ex: number, ey: number) => {
+    const layers: [HTMLDivElement | null, number, number][] = [
+      [headingLayer.current, 34, 3], // farthest back: shifts most
+      [profilesLayer.current, 22, 5],
+      [boredLayer.current, 13, 7], // closest to the viewer: shifts least, leans most
+    ];
+    for (const [el, shift, lean] of layers) {
+      if (!el) continue;
+      el.style.transform = `translate3d(${(-ex * shift).toFixed(2)}px, ${(ey * shift).toFixed(2)}px, 0) rotateY(${(-ex * lean).toFixed(2)}deg) rotateX(${(-ey * lean).toFixed(2)}deg)`;
+    }
+  }, []);
 
   // Check if this is the first visit in this session
   useEffect(() => {
@@ -98,8 +118,27 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#141414' }}>
-      <div className="w-full max-w-6xl mx-auto text-center">
+    <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden" style={{ backgroundColor: '#141414' }}>
+      {/* Animated scanning grid behind the profile picker */}
+      <div className="fixed inset-0 z-0">
+        <GridScan
+          linesColor="#4d4757"
+          scanColor="#7dd3fc"
+          cells={8}
+          depth={3}
+          scanDuration={2.4}
+          scanDelay={1.6}
+          clickEffect="ping"
+          onEye={handleEye}
+        />
+        {/* soft vignette so the heading and profiles stay readable over the grid */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at center, rgba(20,20,20,0.15) 0%, rgba(20,20,20,0.7) 100%)' }}
+        />
+      </div>
+
+      <div className="relative z-10 w-full max-w-6xl mx-auto text-center" style={{ perspective: '1100px' }}>
         {/* Netflix Logo */}
         {/* <div className="mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
           <h1 className="text-netflix-red text-5xl md:text-7xl font-bold tracking-wide">
@@ -108,12 +147,14 @@ export default function Home() {
         </div> */}
 
         {/* Who's watching heading */}
-        <h2 className="text-white text-4xl md:text-6xl font-light mb-12 md:mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
-          Who's Watching?
-
-        </h2>
+        <div ref={headingLayer} style={{ willChange: 'transform' }}>
+          <h2 className="text-white text-4xl md:text-6xl font-light mb-12 md:mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
+            Who's Watching?
+          </h2>
+        </div>
 
         {/* Profiles Accordion */}
+        <div ref={profilesLayer} style={{ willChange: 'transform' }}>
         <div 
           className="profiles-accordion mb-12 md:mb-16 animate-fade-in-up opacity-0"
           style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}
@@ -132,8 +173,10 @@ export default function Home() {
             </div>
           ))}
         </div>
+        </div>
 
         {/* "Are YOU Bored?" Button */}
+        <div ref={boredLayer} style={{ willChange: 'transform' }}>
         <div 
           className="flex justify-center mt-12 md:mt-16 animate-fade-in-up opacity-0" 
           style={{ 
@@ -171,6 +214,7 @@ export default function Home() {
               <span>Are YOU Bored?</span>
             </button>
           </div>
+        </div>
         </div>
       </div>
     </div>

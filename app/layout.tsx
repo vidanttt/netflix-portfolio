@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import TransitionProvider from "@/components/TransitionProvider";
+import GlobalMusicPlayer from "@/components/GlobalMusicPlayer";
 import { ClerkProvider } from "@clerk/nextjs";
 
 const geistSans = Geist({
@@ -131,6 +132,7 @@ export default function RootLayout({
           <TransitionProvider>
             {children}
           </TransitionProvider>
+          <GlobalMusicPlayer />
         </body>
       </html>
     </ClerkProvider>

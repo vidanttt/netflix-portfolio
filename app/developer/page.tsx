@@ -1,84 +1,110 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import gsap from "gsap";
 import DevTerminal from "../components/DevTerminal";
-import { useState, useEffect } from "react";
 import Lanyard from "../components/Lanyard";
+import "./developer.css";
 
 export default function DeveloperPage() {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState<Date | null>(null);
 
+  // Clock starts after mount so server and client markup match
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
-  const formatDateTime = (date: Date) => {
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    };
-    return date.toLocaleDateString("en-US", options);
-  };
+  // One composed entrance: header, giant type, facts, badge area, terminal
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "back.out(1.5)" } });
+      tl.from(".dv-nav", { opacity: 0, y: -24, duration: 0.5, clearProps: "all" }, 0)
+        .from(".dv-giant", { opacity: 0, y: 40, duration: 0.7, clearProps: "all" }, 0.1)
+        .from(".dv-fact, .dv-stats", { opacity: 0, y: 24, duration: 0.5, stagger: 0.08, clearProps: "all" }, 0.3)
+        .from(".dt-window", { opacity: 0, y: 40, scale: 0.97, duration: 0.7, clearProps: "all" }, 0.2)
+        .from(".dv-footer", { opacity: 0, duration: 0.5, ease: "power1.out", clearProps: "all" }, 0.5);
+    }, root);
+    return () => ctx.revert();
+  }, []);
+
+  const time = now
+    ? now.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+    : "";
 
   return (
-    <div className="h-screen bg-black text-green-400 font-mono flex flex-col min-h-0 overflow-hidden touch-manipulation">
-      {/* Top Navigation - Mobile Optimized */}
-      <nav className="flex items-center justify-between px-4 md:px-6 py-2 md:py-3 border-b border-green-500/30 text-sm flex-shrink-0">
-        <div className="flex flex-col items-start">
-          <span className="text-green font-bold text-lg md:text-xl">
-            VIDANT SHARMA
-          </span>
-          <span className="text-white text-xs md:text-sm">Web-Dev</span>
+    <div className="dv-root" ref={rootRef}>
+      <nav className="dv-nav" aria-label="Primary">
+        <div className="dv-brand">
+          <span className="dv-brand-name">Vidant Sharma</span>
+          <span className="dv-brand-role">Creative Dev</span>
+        </div>
+        <div className="dv-links">
+          <Link href="/">Home</Link>
+          <Link href="/creator">Creator</Link>
+          <Link href="/Bored">Bored</Link>
         </div>
       </nav>
 
-      {/* Main Content - Mobile Optimized */}
-      <div className="flex flex-1 min-h-0 h-full overflow-hidden flex-col lg:flex-row">
-        {/* Lanyard Section - Responsive Height with Very Dark Gradient Background */}
-        <div className="w-full lg:w-[40%] border-b lg:border-b-0 lg:border-r border-green-500/20 h-[280px] sm:h-[320px] md:h-[360px] lg:h-full relative bg-gradient-to-br from-white/[0.09] via-zinc-950 to-black">
-          <Lanyard
-            position={[0, 0, 20]}
-            gravity={[0, -40, 0]}
-            transparent={false}
-          />
-
-          {/* Additional gradient overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60 pointer-events-none" />
-
-          {/* Bottom Right Text */}
-          <div className="absolute bottom-4 right-4 text-right pointer-events-none z-10">
-            <p
-              className="text-green drop-shadow-lg"
-              style={{ fontSize: "11px" }}
-            >
-              [interactive 3d Card]
-            </p>
+      <main className="dv-main">
+        {/* Left: details sit behind the physics badge */}
+        <section className="dv-left" aria-label="Profile badge">
+          <div className="dv-behind" aria-hidden="true">
+            <div className="dv-giant">
+              Creative
+              <br />
+              <b>Dev</b>
+            </div>
+            <div className="dv-facts">
+              <div className="dv-fact">
+                <div className="dv-fact-label">Role</div>
+                <div className="dv-fact-value">
+                  <em>Creative developer</em>
+                  <br />
+                  Video editor &amp; motion designer
+                </div>
+              </div>
+              <div className="dv-fact">
+                <div className="dv-fact-label">Builds with</div>
+                <div className="dv-fact-value">Next.js · GSAP · Three.js</div>
+              </div>
+              <div className="dv-stats">
+                <div>
+                  <strong>1K+</strong>
+                  <span>projects</span>
+                </div>
+                <div>
+                  <strong>1M+</strong>
+                  <span>views</span>
+                </div>
+                <div>
+                  <strong>5+</strong>
+                  <span>years</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Terminal Section - Better Mobile Spacing */}
-        <div className="flex-1 bg-black p-1 sm:p-2 lg:p-4 h-full min-h-0 flex flex-col overflow-hidden">
-          <DevTerminal className="flex-1 min-h-0 w-full" />
-        </div>
-      </div>
+          <div className="dv-canvas">
+            <Lanyard position={[0, 0, 20]} gravity={[0, -40, 0]} transparent />
+          </div>
+          <p className="dv-hint">drag the badge</p>
+        </section>
 
-      {/* Footer - Mobile Optimized */}
-      <footer className="border-t border-green-500/30 px-2 sm:px-4 py-1 sm:py-2 text-xs text-green-600 flex-shrink-0 flex flex-col sm:flex-row justify-between items-center gap-1 sm:gap-0">
-        <span className="text-center sm:text-left">
-          &copy; WELCOME :)
-        </span>
-        <span className="text-green-400 font-mono text-xs">
-          {formatDateTime(currentTime)}
-        </span>
+        {/* Right: terminal */}
+        <section className="dv-right" aria-label="Terminal">
+          <DevTerminal className="dt-fill" />
+        </section>
+      </main>
+
+      <footer className="dv-footer">
+        <span className="dv-live">available for projects</span>
+        <span suppressHydrationWarning>{time}</span>
       </footer>
     </div>
   );

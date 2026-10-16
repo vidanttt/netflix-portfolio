@@ -15,7 +15,6 @@ import ReelCarousel from "./components/ReelCarousel";
 import SmoothScroll from "./components/SmoothScroll";
 import GlareHover from '@/components/GlareHover'
 import BorderGlow from '@/components/BorderGlow'
-import GlassMusicPlayer from '@/components/GlassMusicPlayer';
 import CircularCarousel from '@/components/CircularCarousel';
 import StatueRelief from '@/components/StatueRelief';
 
@@ -605,7 +604,6 @@ export default function CreatorPage() {
   return (
     <SmoothScroll>
       {/* Loading overlay removed — handled by TransitionProvider */}
-      <GlassMusicPlayer />
       <TargetCursor
         spinDuration={2}
         hideDefaultCursor

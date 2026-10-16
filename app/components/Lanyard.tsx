@@ -139,6 +139,119 @@ function SimpleRope({ fixed, j1, j2, j3, card }: any) {
   );
 }
 
+/* ── ID-card face ─────────────────────────────────────────────────────
+   card.glb maps one 1678×1678 sheet with two UV islands: the left (x 0–869) is the face
+   that hangs toward the viewer, the right (x 874–1678) is the reverse. This paints a new
+   sheet in that layout: the creator-page profile photo + name + role on the front face,
+   a VS monogram on the reverse. */
+const SHEET = 2048;
+const K = SHEET / 1678;
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function paintCardSheet(photo: HTMLImageElement): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = c.height = SHEET;
+  const ctx = c.getContext("2d")!;
+  ctx.scale(K, K);
+
+  // brushed off-white base
+  const bg = ctx.createLinearGradient(0, 0, 1678, 1678);
+  bg.addColorStop(0, "#f4f4f6");
+  bg.addColorStop(1, "#d9d9de");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 1678, 1678);
+
+  const sans = "'Space Grotesk', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif";
+  const mono = "'Geist Mono Local', ui-monospace, Menlo, Consolas, monospace";
+
+  // ── face A (UV island x 0–869, y 0–1267): the profile photo, name and role.
+  // This is the face that hangs toward the viewer by default.
+  const px = 56, py = 150, pw = 757, ph = 700;
+  ctx.save();
+  roundRect(ctx, px, py, pw, ph, 54);
+  ctx.clip();
+  const scale = Math.max(pw / photo.width, ph / photo.height);
+  const dw = photo.width * scale, dh = photo.height * scale;
+  ctx.drawImage(photo, px - (dw - pw) * 0.3, py - (dh - ph) * 0.15, dw, dh);
+  const fade = ctx.createLinearGradient(0, py + ph * 0.62, 0, py + ph);
+  fade.addColorStop(0, "rgba(0,0,0,0)");
+  fade.addColorStop(1, "rgba(0,0,0,0.38)");
+  ctx.fillStyle = fade;
+  ctx.fillRect(px, py, pw, ph);
+  ctx.restore();
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#0b0b0d";
+  ctx.font = `700 96px ${sans}`;
+  ctx.fillText("Vidant Sharma", px, 972);
+  ctx.fillStyle = "#0a8f2a";
+  ctx.font = `600 40px ${mono}`;
+  ctx.fillText("CREATIVE DEV", px, 1036);
+  ctx.fillStyle = "rgba(11,11,13,0.62)";
+  ctx.font = `500 32px ${mono}`;
+  ctx.fillText("video editor · motion designer", px, 1088);
+  ctx.fillText("@180hrtz_", px, 1134);
+
+  // ── face B (UV island x 874–1678, y 0–1270): monogram
+  const cx = 1276, cy = 600;
+  ctx.strokeStyle = "#0b0b0d";
+  ctx.lineWidth = 22;
+  roundRect(ctx, cx - 250, cy - 250, 500, 500, 120);
+  ctx.stroke();
+  ctx.fillStyle = "#0b0b0d";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 250px ${sans}`;
+  ctx.fillText("VS", cx, cy - 6);
+  ctx.font = `600 36px ${mono}`;
+  ctx.fillText("CREATIVE DEV", cx, cy + 330);
+
+  return c;
+}
+
+function useProfileCardTexture(): THREE.Texture | null {
+  const [tex, setTex] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    let dead = false;
+    let made: THREE.Texture | null = null;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = async () => {
+      try {
+        // make sure the card fonts are ready before painting text onto the sheet
+        await document.fonts?.load("700 40px 'Space Grotesk'");
+        await document.fonts?.load("600 20px 'Geist Mono Local'");
+      } catch {
+        /* fall back to system fonts */
+      }
+      if (dead) return;
+      const t = new THREE.CanvasTexture(paintCardSheet(img));
+      t.flipY = false; // glTF convention, same as the texture it replaces
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;
+      t.needsUpdate = true;
+      made = t;
+      setTex(t);
+    };
+    img.src = "/image.png"; // the profile photo used on the creator page
+    return () => {
+      dead = true;
+      made?.dispose();
+    };
+  }, []);
+  return tex;
+}
+
 function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
   const band = useRef<any>(null);
   const fixed = useRef<any>(null);
@@ -163,6 +276,7 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
   // ✅ Load GLB + texture from /public
   const { nodes, materials } = useGLTF("/card.glb") as any;
   const texture = useTexture("/lanyard.png");
+  const profileMap = useProfileCardTexture();
 
   const [curve] = useState(
     () =>
@@ -322,11 +436,11 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
           >
             <mesh geometry={nodes.card.geometry}>
               <meshPhysicalMaterial
-                map={materials.base?.map ?? texture}
+                map={profileMap ?? materials.base?.map ?? texture}
                 clearcoat={1}
-                clearcoatRoughness={0.15}
-                roughness={0.9}
-                metalness={0.8}
+                clearcoatRoughness={0.12}
+                roughness={profileMap ? 0.55 : 0.9}
+                metalness={profileMap ? 0.25 : 0.8}
               />
             </mesh>
             <mesh
