@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { MediaItem } from '../lib/types';
 import { StarIcon, PlusIcon, HeartIcon, InfoIcon, BookmarkIcon, BookmarkFilledIcon } from '../lib/icons';
 import { isInWatchlist, toggleWatchlist } from '../lib/storage';
+import { setMorphOrigin } from '../lib/morph';
 
 /* ── Skeleton ── */
 export function SkeletonCard() {
@@ -32,7 +33,8 @@ export default function MediaCard({
   const router = useRouter();
   const inWatchlist = isInWatchlist(item.id, item.mediaType);
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    setMorphOrigin(e.currentTarget);
     if (onSelect) onSelect(item);
   };
 
@@ -63,6 +65,7 @@ export default function MediaCard({
 
   const handleInfo = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setMorphOrigin((e.currentTarget as HTMLElement).closest<HTMLElement>('.bd-card'));
     if (onSelect) onSelect(item);
   };
 
@@ -73,7 +76,7 @@ export default function MediaCard({
       role="button"
       tabIndex={0}
       aria-label={`${item.title}, rated ${item.rating}`}
-      onKeyDown={(e) => { if (e.key === 'Enter') handleClick(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') handleClick(e as unknown as React.MouseEvent<HTMLDivElement>); }}
     >
       <div className="bd-card-poster-wrap">
         {item.mediaType === 'tv' && (

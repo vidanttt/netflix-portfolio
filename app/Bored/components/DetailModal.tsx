@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { MediaItem, TMDBMovieDetail, TMDBTVDetail, TMDBMovie, TMDBTVShow } from '../lib/types';
 import {
@@ -14,6 +14,8 @@ import {
 } from '../lib/icons';
 import type { CastMember, TrailerInfo } from '../lib/types';
 import TrailerModal from './TrailerModal';
+import { bounceIn, bounceOut, morphOpen, morphClose } from '../lib/motion';
+import { takeMorphOrigin, type MorphOrigin } from '../lib/morph';
 
 export default function DetailModal({
   item,
@@ -30,6 +32,44 @@ export default function DetailModal({
   const [loading, setLoading] = useState(false);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [inWatchlist, setInWatchlist] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closingRef = useRef(false);
+  const originRef = useRef<MorphOrigin | null>(null);
+
+  // Spring the panel in whenever a title is opened; clear inline styles when it closes
+  useLayoutEffect(() => {
+    const backdrop = backdropRef.current;
+    if (!item) {
+      closingRef.current = false;
+      if (originRef.current) originRef.current.el.style.visibility = '';
+      originRef.current = null;
+      if (backdrop) {
+        backdrop.style.opacity = '';
+        backdrop.style.removeProperty('--bd-bd-blur');
+      }
+      return;
+    }
+    const panel = panelRef.current;
+    if (!panel) return;
+    closingRef.current = false;
+    const content = panel.querySelectorAll('.bd-modal-body > *');
+    // Opened from a poster: grow out of it. Otherwise (hero button, search) just spring in.
+    const origin = takeMorphOrigin() || originRef.current;
+    originRef.current = origin;
+    const morph = origin ? morphOpen(panel, backdrop, content, origin) : null;
+    if (!morph) bounceIn(panel, backdrop, content);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id, item?.mediaType]);
+
+  const requestClose = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    const panel = panelRef.current;
+    const origin = originRef.current;
+    if (panel && origin && morphClose(panel, backdropRef.current, origin, onClose)) return;
+    bounceOut(panel, backdropRef.current, onClose);
+  }, [onClose]);
 
   useEffect(() => {
     if (!item) {
@@ -75,14 +115,14 @@ export default function DetailModal({
       .catch(() => setDetail(item))
       .finally(() => setLoading(false));
 
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose(); };
     document.addEventListener('keydown', esc);
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', esc);
       document.body.style.overflow = '';
     };
-  }, [item, onClose]);
+  }, [item, onClose, requestClose]);
 
   const m = detail || item;
 
@@ -126,17 +166,18 @@ export default function DetailModal({
   return (
     <>
       <div
+        ref={backdropRef}
         className={`bd-modal-backdrop ${item ? 'bd-modal-open' : ''}`}
-        onClick={onClose}
+        onClick={requestClose}
         role="dialog"
         aria-modal="true"
         aria-label={m?.title || ''}
       >
         {m && (
-          <div className="bd-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="bd-modal" ref={panelRef} onClick={(e) => e.stopPropagation()}>
             <img className="bd-modal-backdrop-img" src={m.backdrop} alt="" draggable={false} />
             <div className="bd-modal-gradient" />
-            <button className="bd-modal-close" onClick={onClose} aria-label="Close"><CloseIcon /></button>
+            <button className="bd-modal-close" onClick={requestClose} aria-label="Close"><CloseIcon /></button>
             <div className="bd-modal-body">
               <h2 className="bd-modal-title">{m.title}</h2>
               <div className="bd-modal-meta">

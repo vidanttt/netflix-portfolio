@@ -86,7 +86,6 @@
   padding-top: 6vh;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(40px) saturate(1.4);
-  -webkit-backdrop-filter: blur(40px) saturate(1.4);
   animation: bd-overlay-in 0.3s ease forwards;
 }
 
@@ -110,7 +109,6 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   backdrop-filter: blur(60px) saturate(1.6);
-  -webkit-backdrop-filter: blur(60px) saturate(1.6);
   box-shadow:
     0 0 0 0.5px rgba(255, 255, 255, 0.08),
     0 8px 60px rgba(0, 0, 0, 0.5),
@@ -1212,7 +1210,6 @@
   color: var(--bd-white);
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   padding: 0.2rem 0.45rem;
   border-radius: 3px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1237,7 +1234,6 @@
   border: 1px solid var(--bd-border);
   background: rgba(10, 10, 10, 0.8);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   color: var(--bd-white);
   cursor: pointer;
   display: none;
@@ -1562,7 +1558,6 @@
   border: 1px solid var(--bd-border);
   background: rgba(10, 10, 10, 0.7);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   color: var(--bd-white);
   cursor: pointer;
   display: flex;
@@ -2392,12 +2387,160 @@
 /* Clerk Auth overrides moved globally to app/globals.css */
 
 /* ============================================================
-   BROWSE BY CATEGORY
+   PREMIUM THEME — quiet, tactile, Apple-TV-like
+   A single override layer: neutral blacks, system typography, large calm
+   headings, frosted controls, soft depth instead of borders.
    ============================================================ */
+:root {
+  --bd-bg: #050506;
+  --bd-grey: rgba(235, 235, 245, 0.62);
+  --bd-grey-deep: rgba(235, 235, 245, 0.42);
+  --bd-grey-dim: rgba(235, 235, 245, 0.32);
+  --bd-surface: rgba(255, 255, 255, 0.06);
+  --bd-surface-hover: rgba(255, 255, 255, 0.1);
+  --bd-border: rgba(255, 255, 255, 0.1);
+  --bd-border-hover: rgba(255, 255, 255, 0.2);
+  --bd-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI Variable Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --bd-radius: 12px;
+  --bd-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --bd-side-pad: clamp(1.25rem, 4vw, 3.5rem);
+}
+
+.bd-page {
+  background: var(--bd-bg);
+  letter-spacing: -0.011em;
+  text-rendering: optimizeLegibility;
+}
+.bd-noise { opacity: 0.015; }
+
+/* ── Hero ── */
+.bd-hero { height: 88vh; min-height: 580px; }
+.bd-hero-backdrop {
+  filter: brightness(0.62) saturate(1.05);
+  object-position: center 22%;
+  animation: bd-hero-settle 1.6s var(--bd-ease) both;
+}
+.bd-hero:hover .bd-hero-backdrop { transform: none; }
+.bd-hero-gradient-left { background: linear-gradient(90deg, rgba(5, 5, 6, 0.78) 0%, rgba(5, 5, 6, 0.25) 48%, transparent 70%); }
+.bd-hero-gradient-bottom { height: 55%; background: linear-gradient(to top, rgba(5, 5, 6, 0.55) 0%, rgba(5, 5, 6, 0.25) 45%, transparent 100%); }
+.bd-hero-gradient-top { height: 160px; background: linear-gradient(to bottom, rgba(5, 5, 6, 0.55), transparent); }
+
+.bd-hero-content { bottom: 9%; max-width: 620px; }
+.bd-hero-content > * { animation: bd-rise 0.9s var(--bd-ease) both; }
+.bd-hero-content > *:nth-child(2) { animation-delay: 0.06s; }
+.bd-hero-content > *:nth-child(3) { animation-delay: 0.12s; }
+.bd-hero-content > *:nth-child(4) { animation-delay: 0.18s; }
+.bd-hero-content > *:nth-child(5) { animation-delay: 0.24s; }
+.bd-hero-content > *:nth-child(6) { animation-delay: 0.3s; }
+
+.bd-hero-tag {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--bd-grey);
+  margin-bottom: 0.75rem;
+}
+.bd-hero-tag::before { display: none; }
+
+.bd-hero-movie-title {
+  font-size: clamp(2.4rem, 5.4vw, 4.6rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  margin-top: 0;
+  text-wrap: balance;
+}
+.bd-hero-meta { gap: 0.6rem; margin-top: 1rem; }
+.bd-hero-meta-text, .bd-hero-rating { font-size: 0.9rem; font-weight: 500; color: var(--bd-grey); }
+.bd-hero-dot { width: 3px; height: 3px; opacity: 0.5; }
+.bd-hero-overview { font-size: 1.02rem; line-height: 1.55; color: rgba(235, 235, 245, 0.78); max-width: 52ch; }
+
+.bd-genre-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(1.6);
+  text-decoration: none;
+}
+
+/* ── Buttons ── */
+.bd-btn {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  padding: 0.85rem 1.6rem;
+  border-radius: 999px;
+  transition: transform 0.25s var(--bd-ease), background 0.25s ease, box-shadow 0.25s ease;
+}
+.bd-btn:active { transform: scale(0.97); }
+.bd-btn-primary { background: #fff; color: #000; box-shadow: 0 6px 24px rgba(255, 255, 255, 0.16); }
+.bd-btn-primary:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 10px 30px rgba(255, 255, 255, 0.24); }
+.bd-btn-secondary {
+  background: rgba(255, 255, 255, 0.16);
+  border: 0;
+  backdrop-filter: blur(24px) saturate(1.8);
+}
+.bd-btn-secondary:hover { background: rgba(255, 255, 255, 0.24); }
+.bd-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.bd-hero-indicator { border-radius: 999px; }
+
+/* ── Rows ── */
+.bd-row { padding: 1.4rem 0 1rem; }
+.bd-row-header { margin-bottom: 0.4rem; }
+.bd-row-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.025em; }
+.bd-row-count { font-size: 0.78rem; font-weight: 500; letter-spacing: 0; color: var(--bd-grey-dim); }
+.bd-row-scroll { gap: 0.9rem; }
+
+/* ── Cards ── */
+.bd-card { width: 188px; transition: transform 0.45s var(--bd-ease); }
+.bd-card:hover { transform: scale(1.04); }
+.bd-card-poster-wrap {
+  border-radius: 14px;
+  background: #121214;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 10px 28px -10px rgba(0, 0, 0, 0.8);
+  transition: box-shadow 0.45s var(--bd-ease);
+}
+.bd-card:hover .bd-card-poster-wrap { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 26px 50px -14px rgba(0, 0, 0, 0.9); }
+.bd-card-overlay { background: linear-gradient(to top, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0.1) 62%, transparent 100%); }
+.bd-card-overlay-title { font-weight: 700; letter-spacing: -0.02em; }
+.bd-card-action-btn {
+  border: 0;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(16px) saturate(1.6);
+}
+.bd-card-action-btn:hover { background: rgba(255, 255, 255, 0.32); }
+.bd-card-title { font-size: 0.86rem; font-weight: 600; letter-spacing: -0.012em; }
+.bd-card-year, .bd-card-rating-small { font-size: 0.76rem; font-weight: 500; }
+.bd-badge {
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+  border: 0;
+}
+
+/* ── Row arrows ── */
+.bd-row-arrow {
+  border: 0;
+  background: rgba(30, 30, 34, 0.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* ── Browse by Category ── */
 .bd-cat-tiles {
   display: flex;
-  gap: 1.1rem;
-  padding: 0.5rem var(--bd-side-pad) 0.75rem;
+  gap: 0.9rem;
+  padding: 0.6rem var(--bd-side-pad) 0.9rem;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -2405,59 +2548,272 @@
 .bd-cat-tiles::-webkit-scrollbar { display: none; }
 
 .bd-cat-tile {
+  --tile-accent: #fff;
+  position: relative;
   flex: 0 0 auto;
-  width: 96px;
+  width: 232px;
+  aspect-ratio: 16 / 10;
+  padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.55rem;
+  justify-content: flex-end;
+  gap: 0.15rem;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 20px;
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.55);
-  transition: color 0.25s ease, transform 0.25s var(--bd-ease);
+  color: #fff;
+  /* shown until the artwork arrives */
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tile-accent) 38%, #0b0b0d), #0b0b0d 78%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 14px 30px -14px rgba(0, 0, 0, 0.85);
+  transition: transform 0.45s var(--bd-ease), box-shadow 0.45s var(--bd-ease);
+}
+.bd-cat-tile-img {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.02);
+  transition: transform 0.9s var(--bd-ease), opacity 0.6s ease;
+  animation: bd-tile-in 0.7s ease both;
+}
+.bd-cat-tile-shade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(to top, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.28) 48%, rgba(0, 0, 0, 0.05) 100%),
+    linear-gradient(135deg, color-mix(in srgb, var(--tile-accent) 22%, transparent), transparent 55%);
 }
 .bd-cat-tile:hover,
 .bd-cat-tile:focus-visible {
-  color: #fff;
-  transform: translateY(-3px);
+  transform: translateY(-5px);
   outline: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28), 0 26px 44px -16px rgba(0, 0, 0, 0.95);
 }
-.bd-cat-tile-icon {
-  width: 88px;
-  height: 88px;
-  border-radius: 18px;
-  display: grid;
-  place-items: center;
-  font-size: 2.4rem;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  transition: box-shadow 0.25s ease;
+.bd-cat-tile:hover .bd-cat-tile-img { transform: scale(1.09); }
+.bd-cat-tile:focus-visible { box-shadow: 0 0 0 2px #fff, 0 26px 44px -16px rgba(0, 0, 0, 0.95); }
+.bd-cat-tile:active { transform: translateY(-2px) scale(0.985); }
+.bd-cat-tile-label { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.025em; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55); }
+.bd-cat-tile-sub {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.72);
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.bd-cat-tile:hover .bd-cat-tile-icon { box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(255, 255, 255, 0.5); }
-.bd-cat-tile-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-align: center;
-  line-height: 1.2;
-}
+@keyframes bd-tile-in { from { opacity: 0; } to { opacity: 1; } }
 
 .bd-cat-chips {
   display: flex;
   gap: 0.5rem;
-  padding: 1.25rem var(--bd-side-pad) 0.25rem;
+  padding: 1.4rem var(--bd-side-pad) 0.3rem;
   overflow-x: auto;
   scrollbar-width: none;
 }
 .bd-cat-chips::-webkit-scrollbar { display: none; }
 .bd-cat-chip {
   flex: 0 0 auto;
-  padding: 0.45rem 1rem;
+  padding: 0.5rem 1.05rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.86rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   text-decoration: none;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background 0.25s ease, color 0.25s ease, transform 0.25s var(--bd-ease);
 }
 .bd-cat-chip:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
-.bd-cat-chip-active { background: #fff; color: #000; }
-.bd-cat-chip-active:hover { background: #fff; color: #000; }
+.bd-cat-chip:active { transform: scale(0.96); }
+.bd-cat-chip-active, .bd-cat-chip-active:hover { background: #fff; color: #000; }
+
+/* ── Modal / search / player surfaces ── */
+.bd-modal { border-radius: 24px; box-shadow: 0 40px 120px rgba(0, 0, 0, 0.75), inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+.bd-modal-title, .bd-detail-title, .bd-watch-title { letter-spacing: -0.03em; font-weight: 700; }
+.bd-modal-close, .bd-back-btn, .bd-trailer-close {
+  border: 0;
+  background: rgba(40, 40, 46, 0.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+}
+.bd-search-glass { border-radius: 24px; }
+.bd-server-select, .bd-season-select { border-radius: 999px; }
+.bd-server-dropdown, .bd-season-dropdown { border-radius: 16px; }
+.bd-episode-card, .bd-search-card { border-radius: 14px; }
+.bd-player-iframe, .bd-player-wrap { border-radius: 18px; }
+
+.bd-footer { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.bd-footer-text { font-size: 0.78rem; letter-spacing: 0; color: var(--bd-grey-dim); }
+.bd-end-message { font-size: 0.9rem; letter-spacing: 0; color: var(--bd-grey-dim); }
+
+/* ── Motion ── */
+@keyframes bd-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes bd-hero-settle {
+  from { opacity: 0; transform: scale(1.06); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 768px) {
+  .bd-hero { height: 78vh; min-height: 520px; }
+  .bd-card { width: 142px; }
+  .bd-cat-tile { width: 190px; }
+  .bd-row-title { font-size: 1.2rem; }
+  .bd-hero-overview { font-size: 0.95rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bd-hero-content > *, .bd-hero-backdrop { animation: none; }
+  .bd-card, .bd-card-poster-wrap, .bd-cat-tile, .bd-cat-tile-img, .bd-cat-chip, .bd-btn { transition: none; }
+  .bd-cat-tile-img { animation: none; }
+}
+
+
+/* ── Ambient backdrop: the featured hero's image, blurred, behind the whole page ── */
+.bd-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bd-bg);
+}
+.bd-ambient-layer {
+  position: absolute;
+  inset: -12%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(70px) saturate(1.45) brightness(0.62);
+  transform: translateZ(0);
+  opacity: 0;
+  transition: opacity 1.4s ease;
+  will-change: opacity;
+}
+.bd-ambient-layer.bd-ambient-on { opacity: 1; }
+/* Keeps rows readable: darkens toward the bottom and the edges */
+.bd-ambient-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(5, 5, 6, 0.1) 0%, rgba(5, 5, 6, 0.35) 45%, rgba(5, 5, 6, 0.78) 100%),
+    radial-gradient(120% 90% at 50% 0%, transparent 40%, rgba(5, 5, 6, 0.5) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bd-ambient-layer { transition: none; }
+}
+
+/* ============================================================
+   LIQUID GLASS
+   Base = frosted glass everywhere. When LiquidGlass.tsx has built the refraction
+   filter (Chromium), html[data-bd-liquid] upgrades each surface to real
+   backdrop refraction with a thin specular rim.
+   ============================================================ */
+.bd-btn-secondary,
+.bd-genre-pill,
+.bd-cat-chip,
+.bd-card-action-btn,
+.bd-row-arrow,
+.bd-modal-close,
+.bd-back-btn,
+.bd-trailer-close,
+.bd-server-select,
+.bd-season-select,
+.bd-badge,
+.bd-search-glass,
+.bd-nav-wrap nav > div:first-of-type,
+.bd-nav-wrap nav > a:first-child {
+  --glass-tint: rgba(255, 255, 255, 0.1);
+  background-color: var(--glass-tint) !important;
+  backdrop-filter: blur(14px) saturate(1.7) brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 18px rgba(255, 255, 255, 0.07),
+    0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+
+html[data-bd-liquid] .bd-btn-secondary,
+html[data-bd-liquid] .bd-cat-chip,
+html[data-bd-liquid] .bd-card-action-btn,
+html[data-bd-liquid] .bd-row-arrow,
+html[data-bd-liquid] .bd-modal-close,
+html[data-bd-liquid] .bd-back-btn,
+html[data-bd-liquid] .bd-trailer-close,
+html[data-bd-liquid] .bd-server-select,
+html[data-bd-liquid] .bd-search-glass,
+html[data-bd-liquid] .bd-nav-wrap nav > div:first-of-type,
+html[data-bd-liquid] .bd-nav-wrap nav > a:first-child {
+  backdrop-filter: url(#bd-liquid) blur(3px) saturate(1.8) brightness(1.08);
+  --glass-tint: rgba(255, 255, 255, 0.06);
+}
+
+/* pill nav: the pills inside sit on the glass bar, so make them see-through too */
+.bd-nav-wrap nav ul li a { background: transparent !important; }
+.bd-nav-wrap nav ul li a:hover { background: rgba(255, 255, 255, 0.22) !important; }
+
+/* Detail modal: a large pane of glass over the dimmed page */
+.bd-modal {
+  background: rgba(24, 24, 30, 0.66);
+  backdrop-filter: blur(46px) saturate(1.7);
+  border: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 50px 120px -20px rgba(0, 0, 0, 0.85);
+}
+.bd-modal-backdrop { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: none; }
+.bd-modal-gradient { background: linear-gradient(to top, rgba(24, 24, 30, 0.95) 0%, transparent 65%); }
+
+/* GSAP drives hero entrance now */
+.bd-hero-content > * { animation: none !important; }
+
+.bd-btn-secondary:hover,
+.bd-cat-chip:hover,
+.bd-card-action-btn:hover { --glass-tint: rgba(255, 255, 255, 0.2); }
+
+
+/* Soft blur behind the detail pane (animated by GSAP through --bd-bd-blur) */
+.bd-modal-backdrop {
+  --bd-bd-blur: 0px;
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(var(--bd-bd-blur));
+}
+.bd-modal-backdrop.bd-modal-open { --bd-bd-blur: 14px; }
+
+
+/* ── Search: darker liquid-glass panel ──
+   The overlay must NOT have its own backdrop-filter: a nested backdrop-filter only sees
+   its parent's contents, so the panel's glass would refract nothing. The overlay just
+   dims; the panel does the blurring and refracting of the real page behind it. */
+.bd-search-overlay {
+  background: rgba(0, 0, 0, 0.34);
+  backdrop-filter: none;
+}
+.bd-search-glass,
+html[data-bd-liquid] .bd-search-glass {
+  --glass-tint: rgba(9, 9, 13, 0.56);
+  border-radius: 28px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    inset 0 0 40px rgba(255, 255, 255, 0.04),
+    0 40px 100px -20px rgba(0, 0, 0, 0.8);
+}
+.bd-search-glass { backdrop-filter: blur(22px) saturate(1.6) brightness(0.9); }
+html[data-bd-liquid] .bd-search-glass {
+  backdrop-filter: url(#bd-liquid-soft) blur(9px) saturate(1.7) brightness(0.9);
+}
+/* keep what you type crisp and bright on the darker glass */
+.bd-search-bar-input { color: #fff; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5); }
+.bd-search-bar-input::placeholder { color: rgba(255, 255, 255, 0.5); }
+.bd-search-results-glass, .bd-search-meta-bar { background: transparent; }

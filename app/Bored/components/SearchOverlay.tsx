@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { bounceIn } from '../lib/motion';
 import type { MediaItem, TMDBMultiResult } from '../lib/types';
 import { tmdb, normalizeMultiResult } from '../lib/tmdb';
 import { SearchIcon, CloseIcon, StarIcon } from '../lib/icons';
@@ -104,11 +105,18 @@ export default function SearchOverlay({
     pageRef.current = 1;
   };
 
+  const glassRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!open || !glassRef.current) return;
+    bounceIn(glassRef.current, overlayRef.current);
+  }, [open]);
+
   if (!open) return null;
 
   return (
-    <div className="bd-search-overlay" onClick={handleClose}>
-      <div className="bd-search-glass" onClick={(e) => e.stopPropagation()}>
+    <div className="bd-search-overlay" ref={overlayRef} onClick={handleClose}>
+      <div className="bd-search-glass" ref={glassRef} onClick={(e) => e.stopPropagation()}>
         {/* Search bar */}
         <div className="bd-search-bar">
           <div className="bd-search-bar-icon"><SearchIcon /></div>

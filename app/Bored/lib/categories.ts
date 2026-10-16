@@ -15,10 +15,8 @@ export interface Category {
   slug: string;
   label: string;
   tagline: string;
-  /** Glyph shown on the home-page tile */
-  icon: string;
-  /** CSS gradient for the tile */
-  gradient: string;
+  /** Tint used behind the tile's line icon */
+  accent: string;
   batches: RowCfg[][];
 }
 
@@ -74,8 +72,7 @@ export const CATEGORIES: Category[] = [
     slug: 'anime',
     label: 'Anime',
     tagline: 'Japanese animation — series and films',
-    icon: '🍥',
-    gradient: 'linear-gradient(135deg,#ff5e8a,#7b2ff7)',
+    accent: '#ff6b9d',
     batches: (() => {
       const a = { with_genres: '16', with_original_language: 'ja' };
       return [
@@ -111,8 +108,7 @@ export const CATEGORIES: Category[] = [
     slug: 'cartoons',
     label: 'Cartoons',
     tagline: 'Animated shows and films from the West',
-    icon: '🎨',
-    gradient: 'linear-gradient(135deg,#ffb347,#ff3d71)',
+    accent: '#ffb454',
     batches: (() => {
       // Western cartoons: animation in English (discover can't exclude a language)
       const en = { with_genres: '16', with_original_language: 'en' };
@@ -149,8 +145,7 @@ export const CATEGORIES: Category[] = [
     slug: 'kdrama',
     label: 'K-Drama',
     tagline: 'Korean dramas and films',
-    icon: '🎬',
-    gradient: 'linear-gradient(135deg,#43e97b,#0a7aff)',
+    accent: '#5ee6a8',
     batches: (() => {
       const k = { with_original_language: 'ko' };
       return [
@@ -172,8 +167,7 @@ export const CATEGORIES: Category[] = [
     slug: 'bollywood',
     label: 'Bollywood',
     tagline: 'Hindi films and shows',
-    icon: '🎭',
-    gradient: 'linear-gradient(135deg,#f7971e,#ffd200)',
+    accent: '#ffd166',
     batches: (() => {
       const h = { with_original_language: 'hi' };
       return [
@@ -191,12 +185,12 @@ export const CATEGORIES: Category[] = [
       ];
     })(),
   },
-  { slug: 'action', label: 'Action', tagline: 'Big stunts, bigger explosions', icon: '💥', gradient: 'linear-gradient(135deg,#ff416c,#ff4b2b)', batches: genreBatches('Action', '28', '10759') },
-  { slug: 'comedy', label: 'Comedy', tagline: 'Laugh it off', icon: '😂', gradient: 'linear-gradient(135deg,#f9d423,#ff4e50)', batches: genreBatches('Comedy', '35', '35') },
-  { slug: 'horror', label: 'Horror', tagline: 'Lights on recommended', icon: '👻', gradient: 'linear-gradient(135deg,#232526,#8e0e00)', batches: genreBatches('Horror', '27') },
-  { slug: 'scifi', label: 'Sci-Fi', tagline: 'Space, tech and what-ifs', icon: '🚀', gradient: 'linear-gradient(135deg,#00c6ff,#0072ff)', batches: genreBatches('Sci-Fi', '878', '10765') },
-  { slug: 'romance', label: 'Romance', tagline: 'Feel-good and heartbreak', icon: '💞', gradient: 'linear-gradient(135deg,#ee9ca7,#ff6a88)', batches: genreBatches('Romance', '10749') },
-  { slug: 'documentary', label: 'Documentary', tagline: 'True stories', icon: '🌍', gradient: 'linear-gradient(135deg,#56ab2f,#1f6f54)', batches: genreBatches('Documentary', '99', '99') },
+  { slug: 'action', label: 'Action', tagline: 'Big stunts, bigger explosions', accent: '#ff6b5e', batches: genreBatches('Action', '28', '10759') },
+  { slug: 'comedy', label: 'Comedy', tagline: 'Laugh it off', accent: '#ffd84d', batches: genreBatches('Comedy', '35', '35') },
+  { slug: 'horror', label: 'Horror', tagline: 'Lights on recommended', accent: '#9aa0ff', batches: genreBatches('Horror', '27') },
+  { slug: 'scifi', label: 'Sci-Fi', tagline: 'Space, tech and what-ifs', accent: '#5cc8ff', batches: genreBatches('Sci-Fi', '878', '10765') },
+  { slug: 'romance', label: 'Romance', tagline: 'Feel-good and heartbreak', accent: '#ff8fb1', batches: genreBatches('Romance', '10749') },
+  { slug: 'documentary', label: 'Documentary', tagline: 'True stories', accent: '#7fd99a', batches: genreBatches('Documentary', '99', '99') },
 ];
 
 export const getCategory = (slug: string) => CATEGORIES.find((c) => c.slug === slug);

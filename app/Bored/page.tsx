@@ -14,6 +14,9 @@ import DetailModal from './components/DetailModal';
 import ContinueWatchingRow from './components/ContinueWatchingRow';
 import WatchlistRow from './components/WatchlistRow';
 import CategoryTiles from './components/CategoryTiles';
+import AmbientBackdrop from './components/AmbientBackdrop';
+import LiquidGlass from './components/LiquidGlass';
+import { gsap, reducedMotion, installPressFeedback, animateHeroContent } from './lib/motion';
 import { initAuthStorage } from './lib/storage';
 import { useAuth } from '@clerk/nextjs';
 import './bored.css';
@@ -134,6 +137,21 @@ export default function BoredPage() {
 
   const heroMovie = heroMovies[heroIdx] || null;
 
+  // Motion + glass setup for the page
+  useEffect(() => {
+    const off = installPressFeedback('.bd-btn, .bd-card-action-btn, .bd-cat-chip, .bd-cat-tile, .bd-row-arrow, .bd-hero-indicator');
+    if (!reducedMotion()) {
+      gsap.from('.bd-nav-wrap', { opacity: 0, y: -60, scale: 0.9, duration: 0.7, delay: 0.1, ease: 'back.out(1.9)', clearProps: 'transform,opacity' });
+    }
+    return off;
+  }, []);
+
+  // Hero text springs in each time the featured title changes
+  useEffect(() => {
+    const el = document.querySelector('.bd-hero-content');
+    if (el) animateHeroContent(el);
+  }, [heroMovie?.id]);
+
   /* ── Normalize a row result based on type ── */
   const normalizeRow = useCallback((cfg: RowCfg, results: TMDBMovie[] | TMDBTVShow[]) => {
     if (cfg.type === 'tv') {
@@ -251,6 +269,8 @@ export default function BoredPage() {
   return (
     <div className="bd-page">
       <div className="bd-noise" aria-hidden="true" />
+      <LiquidGlass />
+      <AmbientBackdrop src={heroMovie?.backdrop} />
 
       <div className="bd-content">
         {/* ── Pill Nav ── */}
@@ -347,7 +367,7 @@ export default function BoredPage() {
           </div>
         )}
 
-        {allLoaded && <div className="bd-end-message">You&apos;ve seen it all. Maybe go outside?</div>}
+        {allLoaded && <div className="bd-end-message">You&apos;re all caught up.</div>}
 
         <footer className="bd-footer" role="contentinfo">
           <span className="bd-footer-text">© 2025 Vidaant</span>

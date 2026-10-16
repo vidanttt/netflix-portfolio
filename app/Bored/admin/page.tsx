@@ -153,8 +153,33 @@ export default function AdminDashboard() {
     );
   }
 
-  // 3. Authenticated but unauthorized email state
-  if (!isAuthorizedAdmin || error) {
+  // 3a. Admin is fine, but the dashboard data couldn't be loaded (e.g. database unreachable)
+  if (isAuthorizedAdmin && error) {
+    const dbDown = /ENOTFOUND|ECONNREFUSED|querySrv|MongoServer|MONGODB_URI|timed out/i.test(error);
+    return (
+      <div className="admin-bg min-h-screen flex items-center justify-center text-white font-sans bg-[#0a0a0a] px-4">
+        <div className="max-w-md w-full bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-xl text-center">
+          <div className="w-16 h-16 bg-yellow-500/10 text-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-500/20">
+            ⚠️
+          </div>
+          <h2 className="text-2xl font-bold mb-2">You&apos;re an admin — but the data didn&apos;t load</h2>
+          <p className="text-gray-400 mb-2 text-sm">
+            {dbDown ? 'The database could not be reached. Check MONGODB_URI and that the MongoDB Atlas cluster still exists and is running.' : error}
+          </p>
+          {dbDown && <p className="text-gray-500 mb-6 text-xs break-words">{error}</p>}
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-white text-black font-semibold py-3 px-6 rounded-full hover:bg-gray-200 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3b. Authenticated but unauthorized email state
+  if (!isAuthorizedAdmin) {
     return (
       <div className="admin-bg min-h-screen flex items-center justify-center text-white font-sans bg-[#0a0a0a] px-4">
         <div className="max-w-md w-full bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-xl text-center">

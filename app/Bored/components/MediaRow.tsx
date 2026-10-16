@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useLayoutEffect } from 'react';
+import { revealRow } from '../lib/motion';
 import type { MediaItem } from '../lib/types';
 import MediaCard, { SkeletonCard } from './MediaCard';
 import { ChevronLeftIcon, ChevronRightIcon } from '../lib/icons';
@@ -34,6 +35,17 @@ export default function MediaRow({
   onWatchlistChange?: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const row = sectionRef.current;
+    const scroller = scrollRef.current;
+    if (!row || !scroller) return;
+    return revealRow(row, row.querySelector('.bd-row-title'), scroller.querySelectorAll('.bd-card'));
+    // only on first mount of the row; later item updates keep their own state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(true);
 
@@ -54,7 +66,7 @@ export default function MediaRow({
   if (items.length === 0) return null;
 
   return (
-    <section className="bd-row" aria-label={title} id={id}>
+    <section className="bd-row" aria-label={title} id={id} ref={sectionRef}>
       <div className="bd-row-header">
         <h2 className="bd-row-title">{title}</h2>
         <span className="bd-row-count">{items.length} titles</span>
