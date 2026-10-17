@@ -6,6 +6,7 @@ import gsap from "gsap";
 import DevTerminal from "../components/DevTerminal";
 import Lanyard from "../components/Lanyard";
 import ShapeWaves from "@/components/ShapeWaves";
+import GlassBlob from "@/components/GlassBlob";
 import "./developer.css";
 
 export default function DeveloperPage() {
@@ -122,6 +123,8 @@ export default function DeveloperPage() {
           <DevTerminal className="dt-fill" />
         </section>
       </main>
+
+      <GlassBlob size={210} />
 
       <footer className="dv-footer">
         <span className="dv-live">available for projects</span>

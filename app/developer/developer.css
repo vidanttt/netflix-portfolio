@@ -257,3 +257,35 @@
 
 /* with the giant heading gone, keep the facts anchored to the bottom of the badge section */
 .dv-behind { justify-content: flex-end; }
+
+/* ── liquid-glass blob: the same glass as the Bored navbar ── */
+.glass-blob {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2147483000;
+  border-radius: 52% 48% 50% 50% / 50% 52% 48% 50%;
+  animation: glass-blob-morph 6s ease-in-out infinite alternate;
+  cursor: grab;
+  touch-action: none;
+  will-change: transform;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(14px) saturate(1.7) brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 18px rgba(255, 255, 255, 0.07),
+    0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+html .glass-blob[data-refract] {
+  background-color: rgba(255, 255, 255, 0.04);
+  backdrop-filter: url(#gb-liquid) saturate(1.5) brightness(1.06);
+}
+
+/* the outline drifts slowly, so it never reads as a perfect circle */
+@keyframes glass-blob-morph {
+  0% { border-radius: 52% 48% 50% 50% / 50% 52% 48% 50%; }
+  50% { border-radius: 47% 53% 54% 46% / 53% 47% 53% 47%; }
+  100% { border-radius: 50% 50% 46% 54% / 47% 54% 46% 53%; }
+}
+@media (prefers-reduced-motion: reduce) { .glass-blob { animation: none; } }

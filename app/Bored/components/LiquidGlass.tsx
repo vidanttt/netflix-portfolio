@@ -17,7 +17,7 @@ import React, { useEffect, useState } from 'react';
  */
 const MAP_SIZE = 256;
 
-function buildDisplacementMap(): string {
+export function buildDisplacementMap(): string {
   const c = document.createElement('canvas');
   c.width = c.height = MAP_SIZE;
   const ctx = c.getContext('2d')!;
@@ -66,7 +66,7 @@ function buildDisplacementMap(): string {
   return c.toDataURL('image/png');
 }
 
-const isChromium = () => {
+export const isChromium = () => {
   if (typeof navigator === 'undefined') return false;
   const uaData = (navigator as Navigator & { userAgentData?: { brands: { brand: string }[] } }).userAgentData;
   if (uaData?.brands?.some((b) => /Chromium/i.test(b.brand))) return true;
