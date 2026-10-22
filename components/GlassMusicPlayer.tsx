@@ -245,6 +245,39 @@ const GlassMusicPlayer = ({ songs = defaultPlaylist }: Props) => {
         audioRef.current.volume = muted ? 0 : volume;
     }, [volume, muted]);
 
+    // Remote control for other parts of the site (the grid room's music console and tablet):
+    // window event "music:command" { action: "toggle" | "next" | "prev" | "volume" | "mute", value? },
+    // and the player announces its state as "music:state" { playing, volume, muted, title, artist }.
+    useEffect(() => {
+        const onCommand = (event: Event) => {
+            const { action, value } = (event as CustomEvent<{ action: string; value?: number | boolean }>).detail || {};
+            if (action === "toggle") setPlaying((p) => !p);
+            else if (action === "play") setPlaying(true);
+            else if (action === "pause") setPlaying(false);
+            else if (action === "next") {
+                setDirection(1);
+                setIndex((i) => (i + 1) % songs.length);
+            } else if (action === "prev") {
+                setDirection(-1);
+                setIndex((i) => (i - 1 + songs.length) % songs.length);
+            } else if (action === "volume" && typeof value === "number") {
+                setVolume(Math.min(1, Math.max(0, value)));
+                if (value > 0) setMuted(false);
+            } else if (action === "mute") setMuted(typeof value === "boolean" ? value : (m) => !m);
+            else if (action === "state") announce();
+        };
+        window.addEventListener("music:command", onCommand);
+        return () => window.removeEventListener("music:command", onCommand);
+    });
+    const announce = () => {
+        window.dispatchEvent(
+            new CustomEvent("music:state", {
+                detail: { playing, volume, muted, title: song.title, artist: song.artist },
+            })
+        );
+    };
+    useEffect(announce, [playing, volume, muted, song]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const handleEnded = () => {
         if (repeat) {
             if (audioRef.current) {

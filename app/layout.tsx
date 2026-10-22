@@ -125,9 +125,13 @@ export default function RootLayout({
         }
       }}
     >
-      <html lang="en">
+      {/* Browser extensions (custom cursors, translators, password managers...) write attributes
+          onto <html>/<body> before React loads; ignore those two elements' own attributes so
+          that isn't reported as a hydration mismatch. Their children are still checked. */}
+      <html lang="en" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          suppressHydrationWarning
         >
           <TransitionProvider>
             {children}

@@ -1,11 +1,25 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { memo, useState, useEffect, useCallback, useMemo, useRef, type ComponentProps } from 'react';
 import { useRouter } from 'next/navigation';
 import ProfileCard from './components/ProfileCard';
 import NetflixLoader from './components/NetflixLoader';
 import ParticleText from '@/components/ParticleText';
-import GridScan from '@/components/GridScan';
+import type { RoomCamera } from '@/components/GridScan';
+import GridScan, { lockPointer } from '@/components/GridScan';
+import { ROOM_DOORS, DOOR_HEIGHT, doorLayout } from './roomDoors';
+import RoomTablet, { DEFAULT_ROOM_SETTINGS, ROOM_THEMES, RoomMusicConsole, type RoomSettings } from './components/RoomTablet';
+import {
+  playClick,
+  playDoor,
+  playJump,
+  playLand,
+  playStep,
+  playSwitch,
+  setRoomMuted,
+  setRoomVolume,
+  unlockRoomAudio,
+} from '@/lib/roomAudio';
 import { usePageTransition } from '@/components/TransitionProvider';
 
 interface Profile {
@@ -51,7 +65,6 @@ const profiles: Profile[] = [
   },
 ];
 
-const GRID_REST = { lines: '#4d4757', scan: '#7dd3fc' };
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.slice(1), 16);
@@ -84,6 +97,17 @@ function useGridColors(target: { lines: string; scan: string }) {
   return colors;
 }
 
+/* The room's colour fades towards the hovered profile's colours. The fade ticks every frame for
+   about a second, so it lives in its own small component: only the grid re-renders, not the
+   whole page (re-rendering every card mid-turn in first person is what left ghost frames). */
+const RoomGrid = memo(function RoomGrid({
+  target,
+  ...props
+}: { target: { lines: string; scan: string } } & ComponentProps<typeof GridScan>) {
+  const colors = useGridColors(target);
+  return <GridScan linesColor={colors.lines} scanColor={colors.scan} {...props} />;
+});
+
 export default function Home() {
   const [showLoader, setShowLoader] = useState(false);
   const router = useRouter();
@@ -95,7 +119,7 @@ export default function Home() {
   // toward the viewpoint, so the heading, profiles and button feel placed in the room.
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const hovered = profiles.find((p) => p.id === hoveredId);
-  const gridColors = useGridColors(hovered ? hovered.grid : GRID_REST);
+  // (the chosen room theme replaces the resting colours; a hovered profile still tints the room)
   const headingLayer = useRef<HTMLDivElement>(null);
   const profilesLayer = useRef<HTMLDivElement>(null);
   const boredLayer = useRef<HTMLDivElement>(null);
@@ -108,6 +132,339 @@ export default function Home() {
   const floorCards = useRef<HTMLDivElement>(null);
   const floorButton = useRef<HTMLDivElement>(null);
   const textWidth = useRef(480);
+  // first-person walk through the grid room
+  const [fps, setFps] = useState(false);
+  const roomCanvas = () => document.querySelector<HTMLCanvasElement>('canvas[data-gridscan]');
+  const enterRoom = () => {
+    // pointer lock (and sound) have to be asked for inside the click itself
+    lockPointer(roomCanvas());
+    unlockRoomAudio();
+    setFps(true);
+  };
+  const leaveRoom = useCallback(() => {
+    setFps(false);
+    setOpenDoor(-1);
+    setDoorCard(null);
+    setTabletOpen(false);
+  }, []);
+  // doors on the side walls (edit app/roomDoors.ts)
+  const doorSpots = useMemo(() => doorLayout(ROOM_DOORS), []);
+  const [openDoor, setOpenDoor] = useState(-1);
+  const [doorCard, setDoorCard] = useState<number | null>(null);
+  const signRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const hudRef = useRef<HTMLDivElement>(null);
+  const promptRef = useRef<HTMLDivElement>(null);
+  const aimDoor = useRef(-1);
+  const lockWorks = useRef(false);
+  // the tablet (Tab in first person) and the settings it edits, kept between visits
+  const [tabletOpen, setTabletOpen] = useState(false);
+  const [roomSettings, setRoomSettings] = useState<RoomSettings>(DEFAULT_ROOM_SETTINGS);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('room-settings') || 'null');
+      if (saved) setRoomSettings({ ...DEFAULT_ROOM_SETTINGS, ...saved });
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+  const updateRoom = useCallback((patch: Partial<RoomSettings>) => {
+    setRoomSettings((prev) => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem('room-settings', JSON.stringify(next));
+      } catch {
+        /* storage unavailable */
+      }
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    setRoomVolume(roomSettings.effects);
+    setRoomMuted(roomSettings.muted);
+  }, [roomSettings.effects, roomSettings.muted]);
+  const theme = ROOM_THEMES.find((t) => t.id === roomSettings.theme) ?? ROOM_THEMES[0];
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const onStep = useCallback((kind: 'step' | 'jump' | 'land', amount: number) => {
+    if (kind === 'step') playStep(amount);
+    else if (kind === 'land') playLand(amount);
+    else playJump();
+  }, []); // once the mouse has been captured, a click while free only recaptures it
+  const camBlend = useRef(0);
+  const aimed = useRef<HTMLElement | null>(null);
+  const aimedProfile = useRef<string | null>(null);
+  const actions = useRef<{ item: (item: string, el: HTMLElement | null) => void; profile: (id: string) => void; bored: () => void }>({
+    item: () => {},
+    profile: () => {},
+    bored: () => {},
+  });
+
+  const setAim = (target: HTMLElement | null) => {
+    if (aimed.current === target) return;
+    aimed.current?.classList.remove('is-aimed');
+    target?.classList.add('is-aimed');
+    aimed.current = target;
+    const id = target?.dataset.profileId ?? null;
+    if (id !== aimedProfile.current) {
+      aimedProfile.current = id;
+      setHoveredId(id);
+    }
+  };
+
+  /* First person: the heading, the profiles and the Bored button stay in the room as floating
+     panels. Each one keeps the spot it has in the normal view (same depth, size and lift that
+     handleEye uses) and is drawn with the exact camera the grid is drawn with, so they never
+     slip against the room, from the first frame of the fly-in to walking around them. */
+  const handleCamera = useCallback((cam: RoomCamera) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const was = camBlend.current;
+    camBlend.current = cam.blend;
+    aimDoor.current = cam.aimDoor;
+    const shadows = [floorHeading.current, floorCards.current, floorButton.current];
+    const layers: [HTMLDivElement | null, number, number, number][] = [
+      [headingLayer.current, 0.62, 0.8, -0.05],
+      [profilesLayer.current, 0.5, 0.84, 0],
+      [boredLayer.current, 0.4, 0.9, 0.035],
+    ];
+    const signs = signRefs.current;
+    if (cam.blend <= 0) {
+      if (was > 0) {
+        // back in the normal view: hand the layers back to handleEye
+        stage.style.perspective = `${(1.25 * window.innerHeight).toFixed(0)}px`;
+        stage.style.perspectiveOrigin = '';
+        layers.forEach(([el]) => {
+          if (!el) return;
+          el.style.visibility = '';
+          el.style.opacity = '';
+        });
+        signs.forEach((el) => el && (el.style.visibility = 'hidden'));
+        setAim(null);
+      }
+      return;
+    }
+    shadows.forEach((el) => el && (el.style.opacity = '0'));
+
+    const F = 1.25;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const box = stage.getBoundingClientRect();
+    // the camera's centre of projection on screen
+    const ox = W / 2 + cam.shift[0] * H;
+    const oy = H / 2 - cam.shift[1] * H;
+    stage.style.perspective = `${(cam.focal * H).toFixed(2)}px`;
+    stage.style.perspectiveOrigin = `${(ox - box.left).toFixed(2)}px ${(oy - box.top).toFixed(2)}px`;
+    const [r, u, f] = [cam.right, cam.up, cam.forward];
+    const C = cam.pos;
+    const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+    /* Put an element into the room as a flat panel: centre P (room units), its own right / down /
+       out axes, and how many screen pixels one of its CSS pixels spans (kpx). It is drawn with the
+       grid's camera. Panels fade out before any corner reaches the camera: a corner behind it is
+       what used to smear them across the screen when turning fast or walking close. */
+    const place = (el: HTMLElement, P: number[], ax: number[], ay: number[], az: number[], kpx: number, alpha = 1) => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const unit = kpx / H;
+      let nearest = Infinity;
+      // which sides of the screen every corner is beyond (all four past the same edge = off-screen)
+      let outside = 0b1111;
+      const halfW = W / H / 2 + 0.05;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const q = [0, 1, 2].map((i) => P[i] + ax[i] * sx * w * 0.5 * unit + ay[i] * sy * h * 0.5 * unit - C[i]);
+        const zc = dot(f, q);
+        nearest = Math.min(nearest, zc);
+        if (zc <= 0) {
+          outside = 0;
+          continue;
+        }
+        const x = (dot(r, q) / zc) * cam.focal + cam.shift[0];
+        const y = (dot(u, q) / zc) * cam.focal + cam.shift[1];
+        outside &= (x < -halfW ? 1 : 0) | (x > halfW ? 2 : 0) | (y < -0.55 ? 4 : 0) | (y > 0.55 ? 8 : 0);
+      }
+      const t01 = Math.min(1, Math.max(0, (nearest - 0.03) / 0.09));
+      const near = t01 * t01 * (3 - 2 * t01);
+      // off-screen panels are skipped entirely: drawing them at huge projected sizes mid-turn
+      // is what made the browser show stale frames
+      if (near * alpha <= 0.002 || outside) {
+        // opacity as well: it applies to everything inside, even a child still finishing a
+        // transition, so nothing can linger on screen once the panel is gone
+        el.style.visibility = 'hidden';
+        el.style.opacity = '0';
+        return;
+      }
+      el.style.visibility = 'visible';
+      el.style.opacity = (near * alpha).toFixed(3);
+      const cx = box.left + el.offsetLeft + w / 2;
+      const cy = box.top + el.offsetTop + h / 2;
+      const d = [P[0] - C[0], P[1] - C[1], P[2] - C[2]];
+      const col = (a: number[]) => [kpx * dot(r, a), -kpx * dot(u, a), -kpx * dot(f, a)];
+      const [cx1, cy1, cz1] = [col(ax), col(ay), col(az)];
+      const t = [dot(r, d) * H - (cx - ox), -dot(u, d) * H - (cy - oy), -dot(f, d) * H + cam.focal * H];
+      const m = [...cx1, 0, ...cy1, 0, ...cz1, 0, ...t, 1];
+      el.style.transform = `matrix3d(${m.map((v) => +v.toFixed(5)).join(',')})`;
+    };
+
+    // the heading, the profiles and the Bored button keep their spots from the normal view
+    layers.forEach(([el, z, size, lift], i) => {
+      if (!el) return;
+      const cx = box.left + el.offsetLeft + el.offsetWidth / 2;
+      const cy = box.top + el.offsetTop + el.offsetHeight / 2;
+      const hover = Math.sin(cam.time * 0.9 + i * 1.7) * 0.012 * cam.blend; // a slow float
+      const P = [(cx - W / 2) / H, -(cy - H / 2) / H - (lift * (z + F)) / F + hover, z];
+      place(el, P, [1, 0, 0], [0, -1, 0], [0, 0, -1], (size * (z + F)) / F);
+    });
+
+    // a sign above every door, flat on the wall
+    const half = (0.5 * W) / H;
+    doorSpots.forEach((spot, i) => {
+      const el = signs[i];
+      if (!el) return;
+      const P = [spot.side * (half - 0.003), -0.5 + DOOR_HEIGHT + 0.115, spot.z];
+      const ax = spot.side < 0 ? [0, 0, 1] : [0, 0, -1];
+      const az = [-spot.side, 0, 0];
+      place(el, P, ax, [0, -1, 0], az, 0.00125 * H, cam.blend);
+      el.classList.toggle('is-aimed', cam.aimDoor === i);
+    });
+
+    // things to play with: the music console and the light switch by the entrance, and three
+    // stat holograms near the back wall that turn slowly in the air
+    const items = itemRefs.current;
+    const wall = half - 0.004;
+    if (items.music) place(items.music, [-wall, 0.02, -0.38], [0, 0, 1], [0, -1, 0], [1, 0, 0], 0.0011 * H, cam.blend);
+    if (items.lights) place(items.lights, [wall, 0.0, -0.38], [0, 0, -1], [0, -1, 0], [-1, 0, 0], 0.0011 * H, cam.blend);
+    ['stat0', 'stat1', 'stat2'].forEach((key, i) => {
+      const el = items[key];
+      if (!el) return;
+      const a = Math.sin(cam.time * 0.5 + i * 2.1) * 0.35;
+      const x = Math.max(-half + 0.2, Math.min(half - 0.2, (i - 1) * 0.46));
+      const y = 0.02 + Math.sin(cam.time * 0.8 + i) * 0.015;
+      place(el, [x, y, 2.5], [Math.cos(a), 0, -Math.sin(a)], [0, -1, 0], [-Math.sin(a), 0, -Math.cos(a)], 0.0012 * H, cam.blend);
+    });
+
+    // aim: whatever sits under the crosshair behaves as if hovered
+    let label = '';
+    if (cam.blend > 0.9) {
+      const hit = document.elementFromPoint(W / 2, H / 2) as HTMLElement | null;
+      const target = hit?.closest<HTMLElement>('.profile-item, .bored-btn, [data-room-item]') ?? null;
+      if (target !== aimed.current && target) playClick(1.4); // a faint tick as the crosshair finds something
+      setAim(target);
+      if (target?.dataset.label) label = target.dataset.label;
+      else if (target) label = target.dataset.profileId ? `Open ${target.dataset.profileId}` : 'Are you bored?';
+      else if (cam.aimDoor >= 0) label = `Enter · ${ROOM_DOORS[cam.aimDoor]?.title ?? ''}`;
+    } else {
+      setAim(null);
+    }
+    if (promptRef.current && promptRef.current.dataset.label !== label) {
+      promptRef.current.dataset.label = label;
+      promptRef.current.textContent = label;
+      promptRef.current.classList.toggle('is-on', !!label);
+    }
+    if (cam.locked) lockWorks.current = true;
+    hudRef.current?.classList.toggle('is-unlocked', !cam.locked && lockWorks.current);
+  }, [doorSpots]);
+
+  const enterDoor = useCallback((i: number) => {
+    setOpenDoor(i);
+    // let the room know it is paused before the mouse is released, so that doesn't end first person
+    window.setTimeout(() => {
+      if (document.pointerLockElement) document.exitPointerLock();
+    }, 30);
+    window.setTimeout(() => setDoorCard(i), 650);
+  }, []);
+
+  const closeDoor = () => {
+    playDoor(false);
+    setDoorCard(null);
+    setOpenDoor(-1);
+    lockPointer(roomCanvas());
+  };
+
+  const followDoor = (i: number) => {
+    const href = ROOM_DOORS[i]?.href;
+    if (!href) return;
+    if (href.startsWith('/')) {
+      setDoorCard(null);
+      startTransition();
+      router.push(href);
+    } else if (href.startsWith('mailto:')) {
+      window.location.href = href;
+    } else {
+      window.open(href, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  // Esc closes a door's card
+  useEffect(() => {
+    if (doorCard === null) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.code !== 'Escape') return;
+      setDoorCard(null);
+      setOpenDoor(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [doorCard]);
+
+  // click while aiming at a profile or the Bored button opens it
+  useEffect(() => {
+    if (!fps || openDoor >= 0 || tabletOpen) return undefined;
+    const use = () => {
+      // the click that recaptures the mouse shouldn't also open whatever is under the crosshair
+      if (lockWorks.current && !document.pointerLockElement) return;
+      const target = aimed.current;
+      const item = target?.dataset.roomItem;
+      if (item) {
+        actions.current.item(item, target);
+        return;
+      }
+      if (target) {
+        if (document.pointerLockElement) document.exitPointerLock();
+        if (target.dataset.profileId) actions.current.profile(target.dataset.profileId);
+        else actions.current.bored();
+        return;
+      }
+      if (aimDoor.current >= 0) {
+        playDoor(true);
+        enterDoor(aimDoor.current);
+      }
+    };
+    const onDown = (event: PointerEvent) => {
+      if (event.button === 0) use();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.code === 'KeyE' && !event.repeat) use();
+    };
+    window.addEventListener('pointerdown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [fps, openDoor, tabletOpen, enterDoor]);
+
+  // Tab: hold the tablet up (frees the mouse) or put it away (captures it again)
+  useEffect(() => {
+    if (!fps) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.code === 'Tab' && doorCard === null) {
+        event.preventDefault();
+        if (tabletOpen) {
+          setTabletOpen(false);
+          lockPointer(roomCanvas());
+        } else {
+          setTabletOpen(true);
+          window.setTimeout(() => {
+            if (document.pointerLockElement) document.exitPointerLock();
+          }, 30);
+        }
+        playClick(tabletOpen ? 0.8 : 1.1);
+      } else if (event.code === 'Escape' && tabletOpen) {
+        setTabletOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fps, tabletOpen, doorCard]);
   // iOS only hands out gyroscope data after an explicit tap, so offer one
   const [needMotion, setNeedMotion] = useState(false);
   useEffect(() => {
@@ -143,6 +500,7 @@ export default function Home() {
       [profilesLayer.current, 0.5, 5, 0.84, 0],
       [boredLayer.current, 0.4, 7, 0.9, 0.035],
     ];
+    if (camBlend.current > 0) return; // first person: handleCamera places everything
     for (const [el, z, lean, size, lift] of layers) {
       if (!el) continue;
       // translateZ pushes the layer back; the translate is divided by the perspective scale
@@ -231,6 +589,28 @@ export default function Home() {
     router.push('/Bored');
   };
 
+  actions.current = {
+    item: (item, el) => {
+      if (item === 'lights') {
+        playSwitch(!roomSettings.lights);
+        updateRoom({ lights: !roomSettings.lights });
+      } else if (item.startsWith('music-')) {
+        playClick(1);
+        window.dispatchEvent(new CustomEvent('music:command', { detail: { action: item.slice(6) } }));
+      } else if (item === 'stat') {
+        playClick(1.2);
+        el?.classList.remove('is-popped');
+        void el?.offsetWidth; // restart the pop
+        el?.classList.add('is-popped');
+      }
+    },
+    profile: (id) => {
+      const profile = profiles.find((p) => p.id === id);
+      if (profile) handleProfileSelect(profile);
+    },
+    bored: () => handleBoredSelect(),
+  };
+
   // Function to reset loader state (for testing purposes)
   const resetLoaderState = () => {
     sessionStorage.removeItem('netflixLoaderSeen');
@@ -243,12 +623,21 @@ export default function Home() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden" style={{ backgroundColor: '#141414' }}>
+    <div
+      className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden"
+      style={{ backgroundColor: '#141414' }}
+      data-fps={fps ? '' : undefined}
+    >
       {/* Animated scanning grid behind the profile picker */}
       <div className="fixed inset-0 z-0">
-        <GridScan
-          linesColor={gridColors.lines}
-          scanColor={gridColors.scan}
+        <RoomGrid
+          target={hovered ? hovered.grid : theme}
+          lookPaused={tabletOpen}
+          sensitivity={roomSettings.sensitivity}
+          fovScale={roomSettings.fov}
+          headBob={roomSettings.headBob}
+          lights={roomSettings.lights ? 1 : 0}
+          onStep={onStep}
           cells={8}
           depth={3}
           scanDuration={2.4}
@@ -256,6 +645,12 @@ export default function Home() {
           clickEffect="ping"
           onEye={handleEye}
           enableGyro
+          fps={fps}
+          onFpsExit={leaveRoom}
+          onCamera={handleCamera}
+          doors={doorSpots}
+          openDoor={openDoor}
+          paused={openDoor >= 0}
         />
         {/* shadows on the floor of the room (positioned every frame from the grid's camera) */}
         <div ref={floorHeading} className="room-shadow" aria-hidden="true" />
@@ -263,12 +658,96 @@ export default function Home() {
         <div ref={floorButton} className="room-shadow" aria-hidden="true" />
         {/* soft vignette so the heading and profiles stay readable over the grid */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="room-vignette absolute inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse at center, rgba(20,20,20,0.15) 0%, rgba(20,20,20,0.7) 100%)' }}
         />
       </div>
 
-      {needMotion && !showLoader && (
+      {/* Play: step into the room */}
+      <button
+        type="button"
+        className="room-play"
+        onClick={enterRoom}
+        onPointerDown={(e) => e.stopPropagation() /* no ping on the wall behind the button */}
+        aria-label="Explore the room in first person"
+      >
+        <span className="room-play-ring" aria-hidden="true" />
+        <span className="room-play-ring room-play-ring--late" aria-hidden="true" />
+        <span className="room-play-label">Explore the room</span>
+        <span className="room-play-disc" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" fill="currentColor" />
+          </svg>
+        </span>
+      </button>
+
+      {/* first-person HUD */}
+      <div ref={hudRef} className={`room-hud${tabletOpen ? ' is-tablet' : ''}`} aria-hidden={!fps}>
+        <div className="room-crosshair" />
+        <div ref={promptRef} className="room-prompt" />
+        <div className="room-resume">Click to look around</div>
+        <div className="room-keys">
+          <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
+          <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> look</span>
+          <span><kbd>Space</kbd> jump</span>
+          <span><kbd>Shift</kbd> sprint</span>
+          <span><kbd>Click</kbd><kbd>E</kbd> use</span>
+          <span><kbd>Tab</kbd> tablet</span>
+          <span><kbd>Esc</kbd> exit</span>
+        </div>
+      </div>
+
+      {fps && (
+        <RoomTablet
+          open={tabletOpen}
+          settings={roomSettings}
+          onChange={updateRoom}
+          onTick={() => playClick(1)}
+          onClose={() => {
+            setTabletOpen(false);
+            lockPointer(roomCanvas());
+          }}
+          onLeave={() => {
+            if (document.pointerLockElement) document.exitPointerLock();
+            leaveRoom();
+          }}
+        />
+      )}
+
+      {doorCard !== null && ROOM_DOORS[doorCard] && (
+        <div className="room-card-backdrop" onClick={closeDoor}>
+          <div
+            className="room-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="room-card-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <span className="room-card-tag">{ROOM_DOORS[doorCard].tag}</span>
+            <h3 id="room-card-title">{ROOM_DOORS[doorCard].title}</h3>
+            <p>{ROOM_DOORS[doorCard].description}</p>
+            {ROOM_DOORS[doorCard].stack && (
+              <ul className="room-card-stack">
+                {ROOM_DOORS[doorCard].stack!.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            )}
+            <div className="room-card-actions">
+              {ROOM_DOORS[doorCard].href && (
+                <button type="button" className="room-card-primary" onClick={() => followDoor(doorCard)}>
+                  {ROOM_DOORS[doorCard].cta ?? 'Open project'}
+                </button>
+              )}
+              <button type="button" className="room-card-secondary" onClick={closeDoor}>
+                Back to the room
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {needMotion && !showLoader && !fps && (
         <button
           type="button"
           onClick={askMotion}
@@ -278,13 +757,63 @@ export default function Home() {
         </button>
       )}
 
-      <div ref={stageRef} className="relative z-10 w-full max-w-6xl mx-auto text-center" style={{ perspective: '1135px' }}>
+      <div ref={stageRef} className="room-stage relative z-10 w-full max-w-6xl mx-auto text-center" style={{ perspective: '1135px' }}>
         {/* Netflix Logo */}
         {/* <div className="mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
           <h1 className="text-netflix-red text-5xl md:text-7xl font-bold tracking-wide">
             NETFLIX
           </h1>
         </div> */}
+
+        {/* signs above the doors in first person */}
+        {ROOM_DOORS.map((door, i) => (
+          <div
+            key={door.id}
+            ref={(el) => {
+              signRefs.current[i] = el;
+            }}
+            className="room-door-sign"
+            aria-hidden="true"
+          >
+            <span className="room-door-tag">{door.tag}</span>
+            <span className="room-door-title">{door.title}</span>
+          </div>
+        ))}
+
+        {/* things in the room (first person only) */}
+        <div ref={(el) => { itemRefs.current.music = el; }} className="room-item room-console" aria-hidden="true">
+          <RoomMusicConsole />
+        </div>
+        <div
+          ref={(el) => { itemRefs.current.lights = el; }}
+          className={`room-item room-switch${roomSettings.lights ? ' is-on' : ''}`}
+          data-room-item="lights"
+          data-label={roomSettings.lights ? 'Lights off' : 'Lights on'}
+          aria-hidden="true"
+        >
+          <span className="room-switch-tag">Lights</span>
+          <span className="room-switch-rocker"><i /></span>
+          <span className="room-switch-state">{roomSettings.lights ? 'On' : 'Off'}</span>
+        </div>
+        {[
+          ['1K+', 'projects delivered'],
+          ['1M+', 'total views'],
+          ['5+', 'years editing'],
+        ].map(([value, label], i) => (
+          <div
+            key={label}
+            ref={(el) => { itemRefs.current[`stat${i}`] = el; }}
+            className="room-item room-holo"
+            data-room-item="stat"
+            data-label={`${value} ${label}`}
+            aria-hidden="true"
+          >
+            <span className="room-holo-inner">
+              <strong>{value}</strong>
+              <span>{label}</span>
+            </span>
+          </div>
+        ))}
 
         {/* Who's watching heading */}
         <div ref={headingLayer} style={{ willChange: 'transform' }}>
@@ -331,6 +860,7 @@ export default function Home() {
             <div
               key={profile.id}
               className="profile-item"
+              data-profile-id={profile.id}
               style={{ ['--glow' as string]: profile.glow }}
               onMouseEnter={() => setHoveredId(profile.id)}
               onMouseLeave={() => setHoveredId((id) => (id === profile.id ? null : id))}
