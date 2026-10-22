@@ -133,3 +133,150 @@ export const playSwitch = (on: boolean) => {
   playClick(on ? 1.15 : 0.8);
   thump({ from: on ? 180 : 120, to: on ? 240 : 80, duration: 0.25, gain: 0.08 });
 };
+
+/* ── Weapons ─────────────────────────────────────────────────────────── */
+type ShotVoice = { body: number; crack: number; thump: number; tail: number; size: number };
+const SHOTS: Record<string, ShotVoice> = {
+  light: { body: 1500, crack: 5200, thump: 130, tail: 0.22, size: 0.6 },
+  heavy: { body: 1000, crack: 4200, thump: 95, tail: 0.38, size: 0.95 },
+  magnum: { body: 800, crack: 3800, thump: 80, tail: 0.5, size: 1.1 },
+  smg: { body: 1700, crack: 5600, thump: 140, tail: 0.18, size: 0.55 },
+  rifle: { body: 1200, crack: 4600, thump: 105, tail: 0.32, size: 0.85 },
+  shotgun: { body: 700, crack: 3000, thump: 70, tail: 0.55, size: 1.15 },
+};
+
+/** A gunshot: a sharp crack, the body of the blast, a low punch and the room's tail. */
+export const playShot = (sound: string) => {
+  const v = SHOTS[sound];
+  const c = audio();
+  if (!v || !c) return;
+  const j = 0.9 + Math.random() * 0.2;
+  burst({ duration: 0.05, freq: v.crack * j, q: 0.7, gain: 0.35 * v.size, type: 'highpass' });
+  burst({ duration: 0.12 + v.size * 0.06, freq: v.body * j, q: 0.6, gain: 0.55 * v.size });
+  thump({ from: v.thump * 2.2, to: v.thump * 0.5, duration: 0.16 + v.size * 0.08, gain: 0.6 * v.size });
+  burst({ at: c.currentTime + 0.025, duration: v.tail, freq: 520, q: 0.4, gain: 0.16 * v.size, type: 'lowpass' });
+  burst({ at: c.currentTime + 0.09, duration: v.tail * 1.4, freq: 360, q: 0.4, gain: 0.07 * v.size, type: 'lowpass' });
+};
+
+/** Trigger on an empty chamber. */
+export const playDryFire = () => {
+  burst({ duration: 0.025, freq: 3400, q: 2.5, gain: 0.12 });
+  playClick(1.6);
+};
+
+/** Mechanical clicks for reloads: mag out, mag in, slide / bolt, cylinder, shell, pump. */
+export const playMech = (kind: 'magOut' | 'magIn' | 'slide' | 'cylinder' | 'shell' | 'pump' | 'equip') => {
+  const c = audio();
+  if (!c) return;
+  if (kind === 'magOut') {
+    burst({ duration: 0.05, freq: 2200, q: 2, gain: 0.12 });
+    thump({ at: c.currentTime + 0.02, from: 260, to: 160, duration: 0.06, gain: 0.08 });
+  } else if (kind === 'magIn') {
+    burst({ duration: 0.04, freq: 1800, q: 1.6, gain: 0.18 });
+    burst({ at: c.currentTime + 0.05, duration: 0.03, freq: 3200, q: 2.5, gain: 0.12 });
+  } else if (kind === 'slide') {
+    burst({ duration: 0.06, freq: 2600, q: 1.4, gain: 0.14 });
+    burst({ at: c.currentTime + 0.09, duration: 0.05, freq: 3000, q: 2, gain: 0.18 });
+  } else if (kind === 'cylinder') {
+    for (let i = 0; i < 3; i++) burst({ at: c.currentTime + i * 0.035, duration: 0.02, freq: 3600, q: 3, gain: 0.08 });
+  } else if (kind === 'shell') {
+    burst({ duration: 0.04, freq: 1500, q: 1.4, gain: 0.12 });
+    thump({ from: 300, to: 200, duration: 0.05, gain: 0.05 });
+  } else if (kind === 'pump') {
+    burst({ duration: 0.07, freq: 1300, q: 1, gain: 0.2 });
+    thump({ from: 180, to: 110, duration: 0.07, gain: 0.12 });
+    burst({ at: c.currentTime + 0.16, duration: 0.06, freq: 1700, q: 1.2, gain: 0.22 });
+  } else {
+    burst({ duration: 0.08, freq: 2400, q: 0.9, gain: 0.06 });
+    playClick(0.9);
+  }
+};
+
+/** A knife cutting the air; `heavy` for the stab. */
+export const playSwish = (heavy = false) => {
+  const c = audio();
+  if (!c || !master || !noise || muted || volume <= 0) return;
+  const t = c.currentTime;
+  const src = c.createBufferSource();
+  src.buffer = noise;
+  const filter = c.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.Q.value = 1.6;
+  filter.frequency.setValueAtTime(heavy ? 900 : 1400, t);
+  filter.frequency.exponentialRampToValueAtTime(heavy ? 2400 : 4200, t + 0.12);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(heavy ? 0.28 : 0.2, t + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  src.connect(filter).connect(g).connect(master);
+  src.start(t, Math.random() * 0.5, 0.3);
+};
+
+/** Hit marker tick; a bright ping for a headshot. */
+export const playHit = (head = false) => {
+  const c = audio();
+  if (!c || !master || muted || volume <= 0) return;
+  const t = c.currentTime;
+  const osc = c.createOscillator();
+  osc.type = head ? 'sine' : 'triangle';
+  osc.frequency.setValueAtTime(head ? 2400 : 1900, t);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(head ? 0.16 : 0.1, t + 0.003);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + (head ? 0.35 : 0.06));
+  osc.connect(g).connect(master);
+  osc.start(t);
+  osc.stop(t + 0.4);
+  if (head) {
+    const o2 = c.createOscillator();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(3600, t);
+    const g2 = c.createGain();
+    g2.gain.setValueAtTime(0.0001, t);
+    g2.gain.linearRampToValueAtTime(0.06, t + 0.003);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+    o2.connect(g2).connect(master);
+    o2.start(t);
+    o2.stop(t + 0.3);
+  }
+};
+
+/** A practice bot shutting down. */
+export const playBotDown = () => {
+  const c = audio();
+  if (!c || !master || muted || volume <= 0) return;
+  const t = c.currentTime;
+  const osc = c.createOscillator();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(520, t);
+  osc.frequency.exponentialRampToValueAtTime(90, t + 0.45);
+  const filter = c.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 1400;
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.06, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+  osc.connect(filter).connect(g).connect(master);
+  osc.start(t);
+  osc.stop(t + 0.55);
+  thump({ at: t + 0.42, from: 120, to: 50, duration: 0.18, gain: 0.3 });
+};
+
+/** A bot powering back up. */
+export const playBotSpawn = () => {
+  const c = audio();
+  if (!c || !master || muted || volume <= 0) return;
+  const t = c.currentTime;
+  const osc = c.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(220, t);
+  osc.frequency.exponentialRampToValueAtTime(880, t + 0.25);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.04, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  osc.connect(g).connect(master);
+  osc.start(t);
+  osc.stop(t + 0.32);
+};

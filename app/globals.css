@@ -904,3 +904,324 @@ img, [data-nimg] {
 @media (prefers-reduced-motion: reduce) {
   .room-tablet, .room-tablet-wrap { animation: none; transition: none; }
 }
+
+/* ============================================================
+   Grid room: weapons, training range, combat HUD
+   ============================================================ */
+.room-weapon {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 30;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+/* the controls: always on, top left */
+.room-keys {
+  left: 18px;
+  top: 18px;
+  bottom: auto;
+  transform: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  width: auto;
+  max-width: none;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 11.5px;
+}
+[data-fps] .room-keys { animation: none; opacity: 1; }
+.room-keys i { font-style: normal; color: rgba(255, 255, 255, 0.4); }
+@media (max-height: 560px) { .room-keys { font-size: 10px; gap: 3px; padding: 9px 11px; } }
+
+/* crosshair spreads with movement and spraying */
+.room-crosshair { transition: width 0.08s ease, height 0.08s ease; width: calc(22px + var(--room-bloom, 0) * 22px); height: calc(22px + var(--room-bloom, 0) * 22px); }
+
+/* the training range layer (bots, damage numbers, the exit sign) */
+.room-range {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+}
+.room-range > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  will-change: transform, opacity;
+}
+.room-range-sign {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 320px;
+  padding: 12px 0 14px;
+  visibility: hidden;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 14px;
+  background: rgba(16, 10, 6, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(255, 150, 60, 0.45), 0 0 40px rgba(255, 140, 50, 0.18);
+  color: #fff;
+  will-change: transform, opacity;
+}
+.room-range-sign span { font-size: 11px; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; color: #ffa65c; }
+.room-range-sign strong { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+
+/* practice bots */
+.room-bot { width: 220px; height: 600px; transform-style: preserve-3d; }
+.room-bot-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 100%;
+  transition: transform 0.6s cubic-bezier(0.5, 0, 0.75, 0), opacity 0.4s ease 0.5s, filter 0.1s ease;
+  --bot-dark: #2a2d34;
+  --bot-light: #5d636e;
+  --bot-edge: #7b828e;
+  --bot-accent: #ff9a3c;
+}
+.room-bot-figure { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 0 12px rgba(255, 140, 50, 0.15)); }
+.room-bot-visor, .room-bot-core { filter: drop-shadow(0 0 6px #ff9a3c); }
+.room-bot.is-hit .room-bot-body { filter: brightness(2.4) saturate(0.4); }
+.room-bot.is-hit-head .room-bot-body { filter: brightness(2.2) hue-rotate(-20deg); }
+.room-bot.is-hit-head .room-bot-visor { fill: #fff; }
+.room-bot.is-down .room-bot-body { transform: rotateX(-82deg); opacity: 0; }
+.room-bot.is-gone .room-bot-body { transform: rotateX(-82deg); opacity: 0; transition: none; }
+.room-bot.is-alive .room-bot-body { animation: room-bot-spawn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes room-bot-spawn {
+  from { transform: scaleY(0.2); opacity: 0; filter: brightness(3); }
+}
+.room-bot-hp {
+  position: absolute;
+  left: 50%;
+  top: -30px;
+  width: 120px;
+  height: 10px;
+  transform: translateX(-50%);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+.room-bot-hp i { display: block; height: 100%; background: linear-gradient(90deg, #ff6a3d, #ffb04d); transition: width 0.15s ease; }
+
+/* damage numbers */
+.room-dmg {
+  font-size: 52px;
+  font-weight: 800;
+  color: #fff;
+  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 0 18px rgba(255, 170, 80, 0.6);
+  white-space: nowrap;
+}
+.room-dmg.is-head { color: #ffcf4d; font-size: 64px; text-shadow: 0 0 22px rgba(255, 200, 60, 0.9); }
+
+/* ── combat HUD ── */
+.room-combat {
+  position: fixed;
+  inset: 0;
+  z-index: 36;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  color: #fff;
+}
+.room-combat.is-on { opacity: 1; transition-delay: 0.6s; }
+[data-fps] .room-hud.is-tablet ~ .room-combat { opacity: 0.35; }
+
+.room-hitmarker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  opacity: 0;
+  background:
+    linear-gradient(#fff, #fff) center top / 2px 9px no-repeat,
+    linear-gradient(#fff, #fff) center bottom / 2px 9px no-repeat,
+    linear-gradient(#fff, #fff) left center / 9px 2px no-repeat,
+    linear-gradient(#fff, #fff) right center / 9px 2px no-repeat;
+}
+.room-hitmarker.is-hit { animation: room-hit 0.25s ease-out; }
+.room-hitmarker.is-head { animation: room-hit 0.32s ease-out; filter: drop-shadow(0 0 4px #ffcf4d) sepia(1) saturate(6) hue-rotate(-12deg); }
+.room-hitmarker.is-kill { animation: room-hit-kill 0.45s ease-out; filter: drop-shadow(0 0 6px #ff3b3b) sepia(1) saturate(9) hue-rotate(-50deg); }
+@keyframes room-hit { from { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(1.25); } to { opacity: 0; transform: translate(-50%, -50%) rotate(45deg) scale(0.9); } }
+@keyframes room-hit-kill { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(1.6); } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(45deg) scale(1); } }
+
+/* Minecraft-style hotbar */
+.room-hotbar-wrap {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.room-itemname {
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #fff;
+  text-shadow: 2px 2px 0 #3f3f3f;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  white-space: nowrap;
+}
+.room-itemname.is-on { opacity: 1; transition-duration: 0.1s; }
+.room-hotbar {
+  display: flex;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 2px #2b2b2b, 0 0 0 2px #0d0d0d;
+}
+.room-slot {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  background: rgba(139, 139, 139, 0.32);
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.45), inset -2px -2px 0 rgba(255, 255, 255, 0.12);
+  pointer-events: auto;
+  cursor: pointer;
+}
+.room-slot + .room-slot { margin-left: 2px; }
+.room-slot.is-selected { z-index: 1; outline: 3px solid #fff; outline-offset: 1px; box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.45), 0 0 0 5px #3c3c3c; }
+.room-sprite { width: 100%; height: 100%; display: block; filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.5)); }
+.room-slot-key { position: absolute; left: 3px; top: 2px; font-size: 7px; color: rgba(255, 255, 255, 0.55); }
+.room-slot-count { position: absolute; right: 2px; bottom: 1px; font-size: 9px; color: #fff; text-shadow: 1px 1px 0 #3f3f3f; }
+@media (max-width: 860px) {
+  .room-ammo { left: auto; right: 18px; bottom: 96px; }
+}
+@media (max-width: 520px) {
+  .room-slot { width: 32px; height: 32px; padding: 3px; }
+  .room-xp { width: 292px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .room-bot-body, .room-hitmarker { transition: none; animation: none !important; }
+}
+
+/* ── first person, second pass: the 3D training hall and a cleaner HUD ── */
+html[data-room-fps] .global-music { opacity: 0 !important; pointer-events: none !important; }
+
+.range-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.range-overlay { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.range-dmg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font: 700 22px/1 "Barlow Condensed", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85), 0 0 10px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+.range-dmg.is-head { color: #ffd166; font-size: 26px; }
+.range-dmg.is-kill { color: #ff5b4f; }
+
+/* session card (top right) */
+.room-session {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.room-session.is-on { opacity: 1; transform: none; }
+.room-session > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 64px;
+  padding: 8px 12px 7px;
+  background: linear-gradient(180deg, rgba(12, 13, 17, 0.62), rgba(12, 13, 17, 0.42));
+  backdrop-filter: blur(6px);
+}
+.room-session > div:first-child { border-radius: 10px 0 0 10px; }
+.room-session > div:last-child { border-radius: 0 10px 10px 0; }
+.room-session strong { font-size: 26px; font-weight: 700; line-height: 1; letter-spacing: 0.01em; }
+.room-session small { font-size: 15px; margin-left: 1px; opacity: 0.75; }
+.room-session span { margin-top: 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+
+/* weapon + ammo (bottom right) */
+.room-weaponhud {
+  position: absolute;
+  right: 26px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+.room-weaponhud.is-on { opacity: 1; transform: none; }
+.room-weaponhud-name { font-size: 14px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.62); }
+.room-weaponhud-ammo { display: flex; align-items: baseline; gap: 6px; line-height: 0.9; }
+.room-weaponhud-ammo strong { font-size: 58px; font-weight: 700; letter-spacing: -0.01em; }
+.room-weaponhud-ammo span { font-size: 22px; font-weight: 500; color: rgba(255, 255, 255, 0.5); }
+.room-weaponhud-ammo span::before { content: '/'; margin-right: 6px; opacity: 0.6; }
+.room-weaponhud-ammo.is-empty strong { color: #ff5b4f; }
+.room-weaponhud-ammo.is-melee strong { font-size: 40px; color: rgba(255, 255, 255, 0.6); }
+.room-weaponhud em { font-style: normal; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #ffd166; }
+.room-weaponhud-bar {
+  display: block;
+  width: 120px;
+  height: 3px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: #fff;
+  transform-origin: left center;
+  animation: room-reload-bar var(--reload, 1.6s) linear forwards;
+}
+
+/* Minecraft hotbar: grey translucent slots, dark bevel, a white frame on the held one */
+.room-hotbar {
+  display: flex;
+  gap: 0;
+  padding: 3px;
+  background: rgba(20, 20, 20, 0.62);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.75), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.room-slot {
+  width: 42px;
+  height: 42px;
+  padding: 5px;
+  background: rgba(139, 139, 139, 0.22);
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.55), inset -2px -2px 0 rgba(255, 255, 255, 0.08);
+}
+.room-slot + .room-slot { margin-left: 2px; }
+.room-slot.is-selected {
+  outline: 3px solid #f2f2f2;
+  outline-offset: 0;
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.55), 0 0 0 5px rgba(0, 0, 0, 0.8);
+}
+.room-slot-key { display: none; }
+.room-slot-count { right: 3px; bottom: 2px; font-size: 9px; text-shadow: 1px 1px 0 #3f3f3f; }
+.room-itemname { font-size: 11px; margin-bottom: 12px; text-shadow: 2px 2px 0 #3f3f3f; }
+.room-hotbar-wrap { bottom: 14px; }
+@media (max-width: 560px) {
+  .room-slot { width: 32px; height: 32px; padding: 3px; }
+  .room-weaponhud-ammo strong { font-size: 40px; }
+  .room-session > div { min-width: 50px; padding: 6px 8px; }
+}

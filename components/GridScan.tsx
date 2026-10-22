@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties, type HTMLAttributes } from 'react';
+import { BOXES, RANGE } from '@/lib/rangeLayout';
 
 export type GridScanLineStyle = 'solid' | 'dashed' | 'dotted';
 
@@ -66,8 +67,28 @@ export interface GridScanProps extends Omit<HTMLAttributes<HTMLDivElement>, 'sty
   lights?: number;
   /** Footsteps, jumps and landings, for sound. `amount` is 0..1. */
   onStep?: (kind: 'step' | 'jump' | 'land', amount: number) => void;
+  /** aim-down-sights zoom: field of view (and sensitivity) multiplier, 1 = none */
+  zoom?: number;
+  /** filled in with the room's controls for weapons and the range */
+  controlRef?: { current: RoomControl | null };
   style?: CSSProperties;
 }
+
+/** Things the page can ask the room for while in first person (weapons, the training range). */
+export type RoomControl = {
+  /** recoil: radians up / to the side; part of it stays (climb), the rest springs back */
+  kick: (up: number, side: number) => void;
+  /** a bullet mark on a wall at this point */
+  impact: (x: number, y: number, z: number) => void;
+  /** the ray through the crosshair (camera position + view direction, recoil included) */
+  aim: () => { o: [number, number, number]; d: [number, number, number] };
+  /** where a ray first meets the rooms' walls (through the training doorway if it fits) */
+  trace: (o: number[], d: number[]) => { t: number; x: number; y: number; z: number; face: number };
+  /** pings on click (off while a weapon is out) */
+  setPings: (on: boolean) => void;
+  /** aim-down-sights: field of view (and sensitivity) multiplier, 1 = none */
+  setZoom: (zoom: number) => void;
+};
 
 export type RoomCamera = {
   blend: number;
@@ -82,6 +103,18 @@ export type RoomCamera = {
   aimDoor: number;
   /** whether the mouse is captured (pointer lock) */
   locked: boolean;
+  /** horizontal speed (room units / s), on the ground or not, sprinting */
+  speed: number;
+  grounded: boolean;
+  sprinting: boolean;
+  /** 0 main room, 1 training range (by camera position) */
+  room: number;
+  /** the training doorway is open (fully in first person) */
+  trainOpen: boolean;
+  /** how fast the view turned this frame (radians / s) — for weapon sway */
+  turnRate: [number, number];
+  /** room width / height */
+  aspect: number;
 };
 
 type Settings = {
@@ -118,6 +151,7 @@ type Settings = {
   fovScale: number;
   headBob: boolean;
   lights: number;
+  zoom: number;
 };
 
 type Program = { program: WebGLProgram; uniforms: Record<string, WebGLUniformLocation | null> };
@@ -161,10 +195,17 @@ const FPS_SENS = 0.0022;
 const FPS_TURN = 2.2; // arrow-key turn speed, radians per second
 const FPS_BLEND_SECONDS = 1.15;
 const MAX_DOORS = 8;
+/** The training range: a second room behind the spawn wall, reached through an open doorway. */
+export const TRAIN_FRONT = -1; // the shared wall (= FPS_FRONT)
+export const TRAIN_BACK = -4.2;
+export const TRAIN_GAP_HALF = 0.2; // doorway half width
+export const TRAIN_GAP_H = 0.72; // doorway height above the floor
+const MAX_IMPACTS = 16;
+const IMPACT_LIFE = 6;
 const DOOR_W = 0.34;
 const DOOR_H = 0.62;
 const NO_DOORS: { side: number; z: number }[] = [];
-// Chrome's pointer lock occasionally reports a huge bogus jump; real flicks stay well under this
+// a mouse step bigger than this that comes out of nowhere is taken for Chrome's bogus pointer-lock jump
 const FPS_SPIKE = 260;
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODELS_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
@@ -218,6 +259,12 @@ uniform vec4 uDoors[8];
 uniform int uDoorCount;
 uniform vec2 uDoorSize;
 uniform float uLights;
+uniform float uTrain;
+uniform float uTrainBack;
+uniform vec2 uGap;
+uniform vec3 uAccent;
+uniform vec4 uImpacts[16];
+uniform int uImpactCount;
 in vec2 vUv;
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outGlow;
@@ -489,6 +536,62 @@ void traceBox(vec3 o, vec3 d, out int face, out float plane, out vec3 h) {
   h = o + d * t;
 }
 
+// one box between z = lo and z = hi
+void traceBounds(vec3 o, vec3 d, float lo, float hi, out int face, out float plane, out vec3 h) {
+  float sx = d.x > 0.0 ? 0.5 * uAspect : -0.5 * uAspect;
+  float sy = d.y > 0.0 ? 0.5 : -0.5;
+  float sz = d.z > 0.0 ? hi : lo;
+  float tx = abs(d.x) > 1e-6 ? (sx - o.x) / d.x : 1e9;
+  float ty = abs(d.y) > 1e-6 ? (sy - o.y) / d.y : 1e9;
+  float t = abs(d.z) > 1e-6 ? (sz - o.z) / d.z : 1e9;
+  face = 2;
+  plane = sz;
+  if (tx < t) {
+    face = 0;
+    plane = sx;
+    t = tx;
+  }
+  if (ty < t) {
+    face = 1;
+    plane = sy;
+    t = ty;
+  }
+  h = o + d * t;
+}
+
+bool inGap(vec3 h) {
+  return abs(h.x) < uGap.x && h.y + 0.5 < uGap.y;
+}
+
+// The whole space: the main room and, once open, the training range behind the spawn wall. A ray
+// that meets the shared wall inside the doorway carries on into the other room.
+void traceScene(vec3 o, vec3 d, out int face, out float plane, out vec3 h) {
+  if (uTrain < 0.5) {
+    traceBox(o, d, face, plane, h);
+    return;
+  }
+  bool back = o.z < uFront;
+  if (back) {
+    // the camera is in the training hall: look out through the doorway into the main room
+    if (d.z > 1e-5) {
+      vec3 g = o + d * ((uFront - o.z) / d.z);
+      if (inGap(g)) {
+        traceBounds(g + d * 1e-4, d, uFront, uDepth, face, plane, h);
+        return;
+      }
+    }
+    face = 2;
+    plane = uFront;
+    h = o + d * 0.5;
+    return;
+  }
+  traceBounds(o, d, uFront, uDepth, face, plane, h);
+  if (face == 2 && abs(plane - uFront) < 1e-4 && inGap(h)) {
+    bool goBack = d.z < 0.0;
+    traceBounds(h + d * 1e-4, d, goBack ? uTrainBack : uFront, goBack ? uFront : uDepth, face, plane, h);
+  }
+}
+
 vec3 onPlane(vec3 o, vec3 d, int face, float plane) {
   float den = face == 0 ? d.x : (face == 1 ? d.y : d.z);
   float num = face == 0 ? plane - o.x : (face == 1 ? plane - o.y : plane - o.z);
@@ -511,9 +614,12 @@ void paintDetails(inout vec4 color, inout float energy, vec3 h, int face, float 
   float px = max(max(foot.x, foot.y), 1e-4);
   float lit = uLights;
   vec3 warm = mix(uScanColor, vec3(1.0), 0.55);
+  bool range = uTrain > 0.5 && h.z < uFront;
+  float zLo = range ? uTrainBack : uFront;
+  float zHi = range ? uFront : uDepth;
   // ceiling: a row of long light panels
   if (face == 1 && plane > 0.0) {
-    float cz = clamp(floor((h.z - uFront) / 0.9) * 0.9 + uFront + 0.45, uFront + 0.45, uDepth - 0.45);
+    float cz = clamp(floor((h.z - zLo) / 0.9) * 0.9 + zLo + 0.45, zLo + 0.45, zHi - 0.45);
     float panel = boxMask(vec2(h.x, h.z - cz), vec2(0.13, 0.26), px);
     float rim = boxMask(vec2(h.x, h.z - cz), vec2(0.145, 0.275), px) - panel;
     over(color, vec3(0.02), rim * 0.6 * uFps);
@@ -522,21 +628,88 @@ void paintDetails(inout vec4 color, inout float energy, vec3 h, int face, float 
   }
   // floor: light pools under the panels, the runner and its pulses
   if (face == 1 && plane < 0.0) {
-    float cz = clamp(floor((h.z - uFront) / 0.9) * 0.9 + uFront + 0.45, uFront + 0.45, uDepth - 0.45);
+    float cz = clamp(floor((h.z - zLo) / 0.9) * 0.9 + zLo + 0.45, zLo + 0.45, zHi - 0.45);
     vec2 d = vec2(h.x / 0.42, (h.z - cz) / 0.55);
     float pool = exp(-dot(d, d) * 1.6) * 0.16 * lit;
     over(color, warm, pool * uFps);
+  }
+  if (face == 1 && plane < 0.0 && !range) {
     float runner = (1.0 - smoothstep(0.003, 0.003 + px * 1.5, abs(abs(h.x) - 0.2))) * step(uFront + 0.15, h.z) * step(h.z, uDepth - 0.15);
     float pulse = smoothstep(0.75, 1.0, fract(h.z * 1.2 - uTime * 0.5));
     over(color, uScanColor, runner * (0.22 + 0.6 * pulse) * uFps);
     energy += runner * pulse * 0.35 * uFps;
   }
   // foot of the walls: a thin light strip
-  if (face == 0 || (face == 2 && plane > 0.0)) {
+  if (face == 0 || (face == 2 && (plane > 0.0 || plane < uFront - 0.01))) {
     float v = h.y + 0.5;
     float strip = 1.0 - smoothstep(0.0025, 0.0025 + px * 1.5, abs(v - 0.035));
     over(color, uScanColor, strip * (0.25 + 0.45 * lit) * uFps);
     energy += strip * 0.25 * uFps;
+  }
+}
+
+// The training range: lane lines and distance marks on the floor, a firing line, a target painted
+// on the back wall, and a lit frame round the doorway on both sides of the shared wall.
+void paintRange(inout vec4 color, inout float energy, vec3 h, int face, float plane, vec2 foot) {
+  if (uTrain < 0.5) return;
+  float px = max(max(foot.x, foot.y), 1e-4);
+  float line = 0.0025;
+  // doorway frame (both sides of the shared wall) and the floor threshold
+  if (face == 2 && abs(plane - uFront) < 1e-4) {
+    float e = max(abs(h.x) - uGap.x, h.y + 0.5 - uGap.y);
+    float frame = 1.0 - smoothstep(line, line + px * 1.5, abs(e + 0.006));
+    float halo = exp(-max(e, 0.0) / 0.03) * step(0.0, e) * 0.25;
+    over(color, uAccent, (frame * 0.9 + halo) * uFps);
+    energy += (frame * 0.6 + halo * 0.4) * uFps;
+    // a lamp bar over the opening
+    float lamp = (1.0 - smoothstep(0.08, 0.08 + px, abs(h.x))) * (1.0 - smoothstep(0.004, 0.004 + px, abs(h.y + 0.5 - uGap.y - 0.035)));
+    over(color, mix(uAccent, vec3(1.0), 0.4), lamp * uFps);
+    energy += lamp * 0.7 * uFps;
+  }
+  if (h.z > uFront) return;
+  if (face == 1 && plane < 0.0) {
+    float zFire = uFront - 0.55;
+    float fire = 1.0 - smoothstep(0.006, 0.006 + px * 1.5, abs(h.z - zFire));
+    over(color, uAccent, fire * 0.85 * uFps);
+    energy += fire * 0.5 * uFps;
+    if (h.z < zFire) {
+      float lane = 0.5 * uAspect / 3.0;
+      float lanes = 1.0 - smoothstep(line, line + px * 1.5, abs(abs(h.x) - lane));
+      over(color, uAccent, lanes * 0.45 * uFps);
+      // distance marks every 0.6
+      float m = fract((zFire - h.z) / 0.6);
+      float mark = (1.0 - smoothstep(0.004, 0.004 + px * 1.5, min(m, 1.0 - m) * 0.6)) * (1.0 - smoothstep(0.06, 0.06 + px, abs(abs(h.x) - lane * 2.0)));
+      over(color, uAccent, mark * 0.6 * uFps);
+    }
+  }
+  if (face == 2 && plane < uFront - 0.01) {
+    // a target on the back wall
+    float r = length(vec2(h.x, h.y - 0.02));
+    float rings = (1.0 - smoothstep(0.003, 0.003 + px * 1.5, abs(fract(r / 0.06 + 0.5) - 0.5) * 0.06)) * step(r, 0.3);
+    float bull = smoothstep(0.022 + px, 0.022 - px, r);
+    over(color, uAccent, (rings * 0.55 + bull * 0.9) * uFps);
+    energy += (rings * 0.2 + bull * 0.6) * uFps;
+  }
+}
+
+// Bullet marks: a hot spark that cools to a dark scorch with a faint glowing rim.
+void paintImpacts(inout vec4 color, inout float energy, vec3 h, vec2 foot) {
+  float px = max(max(foot.x, foot.y), 1e-4);
+  for (int i = 0; i < 16; i++) {
+    if (i >= uImpactCount) break;
+    vec4 im = uImpacts[i];
+    float dist = length(h - im.xyz);
+    if (dist > 0.05) continue;
+    float age = im.w;
+    float heat = exp(-age * 7.0);
+    float fade = 1.0 - smoothstep(4.0, 6.0, age);
+    float hole = smoothstep(0.006 + px, 0.006 - px, dist);
+    float rim = (1.0 - smoothstep(0.0, 0.004 + px, abs(dist - 0.009))) * 0.5;
+    over(color, vec3(0.0), hole * 0.85 * fade * uFps);
+    over(color, mix(uScanColor, vec3(1.0, 0.75, 0.4), heat), (rim * (0.3 + heat) + hole * heat) * fade * uFps);
+    float spark = exp(-dist * dist / 0.0004) * heat;
+    over(color, vec3(1.0, 0.85, 0.6), spark * uFps);
+    energy += (spark + hole * heat) * uFps;
   }
 }
 
@@ -602,7 +775,14 @@ void mainFree() {
   int face;
   float plane;
   vec3 h;
-  traceBox(o, d, face, plane, h);
+  traceScene(o, d, face, plane, h);
+  // past the doorway is the 3D hall's own layer; if that layer is ever off for a frame, show the
+  // hall's dark rather than anything of this shader's
+  if (uTrain > 0.5 && h.z < uFront - 1e-3) {
+    outColor = vec4(0.043, 0.047, 0.063, 1.0);
+    outGlow = vec4(0.0);
+    return;
+  }
   vec3 hx = onPlane(ox, dx, face, plane);
   vec3 hy = onPlane(oy, dy, face, plane);
   vec2 uv = faceUv(h, face);
@@ -615,13 +795,15 @@ void mainFree() {
   float energy = 0.0;
 
   if (uShade > 0.0) {
-    float zGap = min(uDepth - h.z, h.z - uFront);
+    bool inRange = uTrain > 0.5 && h.z < uFront;
+    float zGap = inRange ? min(uFront - h.z, h.z - uTrainBack) : min(uDepth - h.z, h.z - uFront);
     vec2 gaps = face == 0
       ? vec2(0.5 - abs(h.y), zGap)
       : (face == 1 ? vec2(0.5 * uAspect - abs(h.x), zGap) : vec2(0.5 * uAspect - abs(h.x), 0.5 - abs(h.y)));
     vec2 crease = 1.0 - exp(-max(gaps, 0.0) / 0.16);
     float occlusion = crease.x * crease.y;
-    float lamp = 1.0 / (1.0 + h.z * h.z * 0.9);
+    float lz = inRange ? (uFront - h.z) * 0.45 : h.z;
+    float lamp = 1.0 / (1.0 + lz * lz * 0.9);
     float tilt = face == 1 ? (plane < 0.0 ? 1.1 : 0.85) : (face == 2 ? 0.8 : 1.0);
     float glowSpill = (l.spill * 0.5 + l.trail * 0.12) * l.reveal * l.fade;
     if (uLight > 0.5) {
@@ -639,7 +821,7 @@ void mainFree() {
     int face2;
     float plane2;
     vec3 h2;
-    traceBox(h, r, face2, plane2, h2);
+    traceScene(h, r, face2, plane2, h2);
     vec2 uv2 = faceUv(h2, face2);
     vec2 ux2 = faceUv(onPlane(hx, reflect(dx, n), face2, plane2), face2) - uv2;
     vec2 uy2 = faceUv(onPlane(hy, reflect(dy, n), face2, plane2), face2) - uv2;
@@ -649,6 +831,7 @@ void mainFree() {
     m.reveal *= l.reveal;
     float grazing = 1.0 - normalize(r).y;
     float gain = (0.3 + 0.7 * grazing * grazing * grazing * grazing) * uReflect * exp(-travel * 1.1) * (uLight > 0.5 ? 0.6 : 1.0);
+    if (uTrain > 0.5 && h2.z < uFront - 1e-3) gain = 0.0; // the hall is its own layer: nothing of it to reflect here
     float reflected = 0.0;
     paint(color, reflected, m, gain, 0.0, 0.0);
     energy += reflected * 0.6;
@@ -683,7 +866,9 @@ void mainFree() {
   // lights off: the room drops to a dim glow (its own fixtures and the doors stay lit)
   color.rgb *= mix(0.42, 1.0, mix(1.0, uLights, uFps));
   paintDetails(color, energy, h, face, plane, foot);
+  paintRange(color, energy, h, face, plane, foot);
   if (uDoorCount > 0) paintDoors(color, energy, h, face, plane, foot);
+  if (uImpactCount > 0) paintImpacts(color, energy, h, foot);
 
   if (uHaze > 0.0 && uScanAlpha > 0.0 && uScanZ > uFront && abs(d.z) > 1e-5) {
     float ts = (uScanZ - o.z) / d.z;
@@ -902,6 +1087,8 @@ export const GridScan = ({
   headBob = true,
   lights = 1,
   onStep,
+  zoom = 1,
+  controlRef,
   className = '',
   style,
   ...rest
@@ -948,7 +1135,8 @@ export const GridScan = ({
     sensitivity: clamp(sensitivity, 0.2, 3),
     fovScale: clamp(fovScale, 0.7, 1.5),
     headBob,
-    lights: clamp(lights, 0, 1)
+    lights: clamp(lights, 0, 1),
+    zoom: clamp(zoom, 0.3, 1)
   };
   const onEyeRef = useRef(onEye);
   onEyeRef.current = onEye;
@@ -958,6 +1146,8 @@ export const GridScan = ({
   onCameraRef.current = onCamera;
   const onStepRef = useRef(onStep);
   onStepRef.current = onStep;
+  const controlRefRef = useRef(controlRef);
+  controlRefRef.current = controlRef;
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
@@ -1074,6 +1264,18 @@ export const GridScan = ({
     const doorGlow = new Float32Array(MAX_DOORS);
     let aimDoor = -1;
     let roomLights = 1;
+    // bullet marks and the transient part of recoil
+    const impacts: { x: number; y: number; z: number; age: number }[] = [];
+    const impactData = new Float32Array(MAX_IMPACTS * 4);
+    const kick = { p: 0, y: 0, vp: 0, vy: 0 };
+    let pingsOn = true;
+    let zoomTarget = 1;
+    let zoomNow = 1;
+    let lastYaw = 0;
+    let lastPitch = 0;
+    const turn: [number, number] = [0, 0];
+    // the training range only exists once you are fully in first person
+    const trainOpen = () => player.active && player.blend >= 0.999;
     const pingData = new Float32Array(MAX_PINGS * 4);
     const pingAlpha = new Float32Array(MAX_PINGS);
     let drawnOnce = false;
@@ -1114,18 +1316,12 @@ export const GridScan = ({
       return x * x * x * (x * (x * 6 - 15) + 10);
     };
 
-    // where the crosshair (straight ahead of the player) meets the room
-    const crosshairHit = () => {
-      const { aspect, roomDepth } = roomSize();
-      const cp = Math.cos(player.pitch);
-      const d = { x: Math.sin(player.yaw) * cp, y: Math.sin(player.pitch), z: Math.cos(player.yaw) * cp };
-      const o = camPos;
-      let t = 1e9;
+    const traceBoundsJS = (o: number[], d: number[], lo: number, hi: number) => {
+      const { aspect } = roomSize();
       let face = 2;
-      const tx = Math.abs(d.x) > 1e-6 ? ((d.x > 0 ? 0.5 : -0.5) * aspect - o.x) / d.x : 1e9;
-      const ty = Math.abs(d.y) > 1e-6 ? ((d.y > 0 ? 0.5 : -0.5) - o.y) / d.y : 1e9;
-      const tz = Math.abs(d.z) > 1e-6 ? ((d.z > 0 ? roomDepth : FPS_FRONT) - o.z) / d.z : 1e9;
-      t = tz;
+      let t = Math.abs(d[2]) > 1e-6 ? ((d[2] > 0 ? hi : lo) - o[2]) / d[2] : 1e9;
+      const tx = Math.abs(d[0]) > 1e-6 ? ((d[0] > 0 ? 0.5 : -0.5) * aspect - o[0]) / d[0] : 1e9;
+      const ty = Math.abs(d[1]) > 1e-6 ? ((d[1] > 0 ? 0.5 : -0.5) - o[1]) / d[1] : 1e9;
       if (tx < t) {
         t = tx;
         face = 0;
@@ -1134,14 +1330,40 @@ export const GridScan = ({
         t = ty;
         face = 1;
       }
-      return { x: o.x + d.x * t, y: o.y + d.y * t, z: o.z + d.z * t, face };
+      return { t, face, x: o[0] + d[0] * t, y: o[1] + d[1] * t, z: o[2] + d[2] * t };
+    };
+    // where a ray first meets the walls, passing through the training doorway when it fits
+    const traceSceneJS = (o: number[], d: number[]) => {
+      const { roomDepth } = roomSize();
+      if (!trainOpen()) return traceBoundsJS(o, d, FPS_FRONT, roomDepth);
+      const back = o[2] < TRAIN_FRONT;
+      const hit = traceBoundsJS(o, d, back ? TRAIN_BACK : TRAIN_FRONT, back ? TRAIN_FRONT : roomDepth);
+      if (hit.face === 2 && Math.abs(hit.z - TRAIN_FRONT) < 1e-6 && Math.abs(hit.x) < TRAIN_GAP_HALF && hit.y + 0.5 < TRAIN_GAP_H) {
+        const goBack = d[2] < 0;
+        const o2 = [hit.x + d[0] * 1e-4, hit.y + d[1] * 1e-4, hit.z + d[2] * 1e-4];
+        const next = traceBoundsJS(o2, d, goBack ? TRAIN_BACK : TRAIN_FRONT, goBack ? TRAIN_FRONT : roomDepth);
+        return { ...next, t: hit.t + 1e-4 + next.t };
+      }
+      return hit;
+    };
+    const viewDir = () => {
+      const yaw = player.yaw + kick.y;
+      const pitch = clamp(player.pitch + kick.p, -1.5, 1.5);
+      const cp = Math.cos(pitch);
+      return [Math.sin(yaw) * cp, Math.sin(pitch), Math.cos(yaw) * cp];
+    };
+
+    // where the crosshair (straight ahead of the player) meets the room
+    const crosshairHit = () => {
+      const hit = traceSceneJS([camPos.x, camPos.y, camPos.z], viewDir());
+      return { x: hit.x, y: hit.y, z: hit.z, face: hit.face };
     };
 
     // which door (if any) the crosshair is on
     const findAimDoor = (s: Settings) => {
       if (!player.active || player.blend < 0.9 || s.paused) return -1;
       const hit = crosshairHit();
-      if (hit.face !== 0) return -1;
+      if (hit.face !== 0 || hit.z < FPS_FRONT) return -1;
       const side = Math.sign(hit.x);
       for (let i = 0; i < s.doors.length; i++) {
         const door = s.doors[i];
@@ -1191,7 +1413,7 @@ export const GridScan = ({
         player.yaw += (0 - player.yaw) * ease;
         player.pitch += (0 - player.pitch) * ease;
         player.x += (0 - player.x) * ease;
-        player.z += (FPS_START_Z - player.z) * ease;
+        player.z += (FPS_START_Z - player.z) * Math.max(ease, Math.min(1, dt * 3));
         player.y += (-0.5 + FPS_EYE - player.y) * ease;
         player.vx = player.vz = player.vy = 0;
         if (Math.abs(player.yaw) < 0.4 && Math.abs(player.pitch) < 0.3) {
@@ -1232,7 +1454,8 @@ export const GridScan = ({
           player.grounded = false;
           onStepRef.current?.('jump', 1);
         }
-        const baseFov = FPS_FOV * s.fovScale;
+        zoomNow += (zoomTarget - zoomNow) * (1 - Math.exp(-dt * 14));
+        const baseFov = FPS_FOV * s.fovScale * s.zoom * zoomNow;
         player.fov += ((sprint && len > 0 ? baseFov * 1.08 : baseFov) - player.fov) * (1 - Math.exp(-dt * 6));
       } else {
         player.turnX = 0;
@@ -1244,13 +1467,68 @@ export const GridScan = ({
       // body: gravity, floor, ceiling and walls
       player.x += player.vx * dt;
       player.z += player.vz * dt;
-      const wallX = 0.5 * aspect - FPS_RADIUS;
+      const inHall = trainOpen() && player.z < TRAIN_FRONT;
+      const wallX = (inHall ? RANGE.halfW : 0.5 * aspect) - FPS_RADIUS;
       player.x = clamp(player.x, -wallX, wallX);
-      player.z = clamp(player.z, FPS_FRONT + FPS_RADIUS, roomDepth - FPS_RADIUS);
-      const ground = -0.5 + FPS_EYE;
+      if (trainOpen()) {
+        // the shared wall has a doorway: inside its thickness you are held to the opening
+        const gapX = TRAIN_GAP_HALF - FPS_RADIUS * 0.6;
+        if (Math.abs(player.z - TRAIN_FRONT) < FPS_RADIUS) player.x = clamp(player.x, -gapX, gapX);
+        const through = Math.abs(player.x) <= gapX;
+        if (player.z >= TRAIN_FRONT) {
+          player.z = clamp(player.z, through ? RANGE.back + FPS_RADIUS : TRAIN_FRONT + FPS_RADIUS, roomDepth - FPS_RADIUS);
+        } else {
+          player.z = clamp(player.z, RANGE.back + FPS_RADIUS, through ? roomDepth - FPS_RADIUS : TRAIN_FRONT - FPS_RADIUS);
+        }
+      } else if (player.active || player.blend <= 0) {
+        player.z = clamp(player.z, FPS_FRONT + FPS_RADIUS, roomDepth - FPS_RADIUS);
+      }
+      // the boxes in the training hall: walk up steps, stand on platforms, bump into the rest
+      let floorY = -0.5;
+      if (inHall && player.active) {
+        const feet = player.y - FPS_EYE;
+        const STEP = 0.09;
+        for (const b of BOXES) {
+          const nx = clamp(player.x, b.min[0], b.max[0]);
+          const nz = clamp(player.z, b.min[2], b.max[2]);
+          const dx = player.x - nx;
+          const dz = player.z - nz;
+          const dist2 = dx * dx + dz * dz;
+          const top = b.max[1];
+          if (top <= feet + STEP + 1e-4) {
+            // low enough to stand on (or step up onto) when over it
+            if (dist2 < (FPS_RADIUS * 0.7) ** 2) floorY = Math.max(floorY, top);
+            continue;
+          }
+          if (dist2 >= FPS_RADIUS * FPS_RADIUS) continue;
+          // blocked: push out of the box sideways
+          if (dist2 > 1e-10) {
+            const d = Math.sqrt(dist2);
+            player.x = nx + (dx / d) * FPS_RADIUS;
+            player.z = nz + (dz / d) * FPS_RADIUS;
+          } else {
+            const pushes = [
+              [player.x - b.min[0] + FPS_RADIUS, -1, 0],
+              [b.max[0] - player.x + FPS_RADIUS, 1, 0],
+              [player.z - b.min[2] + FPS_RADIUS, 0, -1],
+              [b.max[2] - player.z + FPS_RADIUS, 0, 1],
+            ].sort((a, c) => a[0] - c[0]);
+            player.x += pushes[0][1] * pushes[0][0];
+            player.z += pushes[0][2] * pushes[0][0];
+          }
+        }
+      }
+      const ground = floorY + FPS_EYE;
+      const ceiling = (inHall ? RANGE.ceil : 0.5) - 0.06;
       if (player.active) {
         player.vy -= FPS_GRAVITY * dt;
         player.y += player.vy * dt;
+        // stepping up onto something low: rise smoothly instead of popping
+        if (player.grounded && player.y < ground && ground - player.y < 0.1) {
+          player.y += Math.min(ground - player.y, dt * 1.6);
+          if (player.y < ground - 0.002) player.vy = Math.max(player.vy, 0);
+        }
+        if (player.grounded && player.y > ground + 0.02 && player.vy <= 0) player.grounded = false; // walked off an edge
         if (player.y <= ground) {
           if (!player.grounded && player.vy < -0.6) {
             player.vdip += Math.min(1.2, -player.vy) * 0.9;
@@ -1260,8 +1538,8 @@ export const GridScan = ({
           player.vy = 0;
           player.grounded = true;
         }
-        if (player.y > 0.5 - 0.06) {
-          player.y = 0.5 - 0.06;
+        if (player.y > ceiling) {
+          player.y = ceiling;
           player.vy = Math.min(player.vy, 0);
         }
       }
@@ -1287,12 +1565,26 @@ export const GridScan = ({
       camPos.y = player.y + bobY - player.dip * 0.04;
       camPos.z = player.z + r[2] * bobX;
 
+      // recoil: the transient part springs back to centre
+      kick.vp += (-kick.p * 170 - kick.vp * 19) * dt;
+      kick.vy += (-kick.y * 170 - kick.vy * 19) * dt;
+      kick.p += kick.vp * dt;
+      kick.y += kick.vy * dt;
+      turn[0] = dt > 0 ? wrapAngle(player.yaw - lastYaw) / dt : 0;
+      turn[1] = dt > 0 ? (player.pitch - lastPitch) / dt : 0;
+      lastYaw = player.yaw;
+      lastPitch = player.pitch;
+      for (let i = impacts.length - 1; i >= 0; i--) {
+        impacts[i].age += dt;
+        if (impacts[i].age > IMPACT_LIFE) impacts.splice(i, 1);
+      }
+
       // blend: position, turn, focal length and frustum shift all move together
       const k = smoother(player.blend);
       view3d.blend = k;
       view3d.pos = [eye.x + (camPos.x - eye.x) * k, eye.y + (camPos.y - eye.y) * k, -eye.f + (camPos.z + eye.f) * k];
-      const yaw = player.yaw * k;
-      const pitch = player.pitch * k;
+      const yaw = (player.yaw + kick.y) * k;
+      const pitch = clamp(player.pitch + kick.p, -1.5, 1.5) * k;
       const cpk = Math.cos(pitch);
       const fk: [number, number, number] = [Math.sin(yaw) * cpk, Math.sin(pitch), Math.cos(yaw) * cpk];
       const rk: [number, number, number] = [Math.cos(yaw), 0, -Math.sin(yaw)];
@@ -1449,6 +1741,16 @@ export const GridScan = ({
       gl.uniform1i(ru.uDoorCount, Math.min(s.doors.length, MAX_DOORS));
       gl.uniform2f(ru.uDoorSize, DOOR_W, DOOR_H);
       gl.uniform1f(ru.uLights, roomLights);
+      gl.uniform1f(ru.uTrain, trainOpen() ? 1 : 0);
+      gl.uniform1f(ru.uTrainBack, TRAIN_BACK);
+      gl.uniform2f(ru.uGap, TRAIN_GAP_HALF, TRAIN_GAP_H);
+      gl.uniform3f(ru.uAccent, 1, 0.58, 0.24);
+      for (let i = 0; i < MAX_IMPACTS; i++) {
+        const im = impacts[i];
+        if (im) impactData.set([im.x, im.y, im.z, im.age], i * 4);
+      }
+      gl.uniform4fv(ru.uImpacts, impactData);
+      gl.uniform1i(ru.uImpactCount, impacts.length);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       const glowing = s.glow > 0;
@@ -1513,7 +1815,14 @@ export const GridScan = ({
         shift: view3d.shift,
         time,
         aimDoor,
-        locked: player.locked
+        locked: player.locked,
+        speed: Math.hypot(player.vx, player.vz),
+        grounded: player.grounded,
+        sprinting: player.keys.has('ShiftLeft') || player.keys.has('ShiftRight'),
+        room: camPos.z < TRAIN_FRONT && trainOpen() ? 1 : 0,
+        trainOpen: trainOpen(),
+        turnRate: [turn[0], turn[1]],
+        aspect: view.width / view.height
       });
       if (onEyeRef.current && s.parallax > 0) {
         const range = 0.22 * s.parallax;
@@ -1563,6 +1872,7 @@ export const GridScan = ({
       const busy =
         player.active ||
         player.blend > 0 ||
+        impacts.length > 0 ||
         doorOpen.some(v => v > 0.001) ||
         introClock < 1 ||
         (!reduce && s.autoScan) ||
@@ -1572,7 +1882,8 @@ export const GridScan = ({
         hover.strength > 0.002 ||
         (!reduce && s.parallax > 0 && !look.held) ||
         (s.points && !reduce && scan.alpha > 0);
-      if (busy) raf = requestAnimationFrame(frame);
+      // (something during this frame may already have asked for the next one: never queue two)
+      if (busy && !raf) raf = requestAnimationFrame(frame);
       else last = 0;
     };
 
@@ -1588,18 +1899,34 @@ export const GridScan = ({
     };
 
     // mouse look: pointer lock when we have it, otherwise drag to look
+    let lookAvg = 0;
+    let lookAt = 0;
+    let lookSkipped = false;
     const onMouseMove = (event: MouseEvent) => {
       const st = settingsRef.current;
       if (!player.active || st.paused || st.lookPaused) return;
       if (!player.locked && !(event.buttons & 1)) return;
       const mx = event.movementX;
       const my = event.movementY;
-      // drop the bogus jumps Chrome sometimes reports under pointer lock (and the first event
-      // after the lock is taken, which can carry the whole cursor travel)
-      if (!Number.isFinite(mx) || !Number.isFinite(my) || Math.abs(mx) > FPS_SPIKE || Math.abs(my) > FPS_SPIKE) return;
-      if (performance.now() - lockedAt < 60) return;
-      player.yaw = wrapAngle(player.yaw + mx * FPS_SENS * st.sensitivity);
-      player.pitch = clamp(player.pitch - my * FPS_SENS * st.sensitivity, -1.45, 1.45);
+      if (!Number.isFinite(mx) || !Number.isFinite(my)) return;
+      const now = performance.now();
+      // the first event after the lock is taken can carry the whole cursor travel
+      if (now - lockedAt < 60) return;
+      // Chrome sometimes reports one bogus jump under pointer lock. Drop a single big step that
+      // comes out of nowhere, but never a run of them: a fast flick (or a slow frame, which
+      // batches the movement into fewer, bigger events) has to keep turning, not freeze.
+      const mag = Math.max(Math.abs(mx), Math.abs(my));
+      if (now - lookAt > 120) lookAvg = 0;
+      lookAt = now;
+      const outlier = mag > FPS_SPIKE && mag > lookAvg * 6 + 80;
+      lookAvg = lookAvg * 0.6 + Math.min(mag, 600) * 0.4;
+      if (outlier && !lookSkipped) {
+        lookSkipped = true;
+        return;
+      }
+      lookSkipped = false;
+      player.yaw = wrapAngle(player.yaw + mx * FPS_SENS * st.sensitivity * st.zoom * zoomNow);
+      player.pitch = clamp(player.pitch - my * FPS_SENS * st.sensitivity * st.zoom * zoomNow, -1.45, 1.45);
       wake();
     };
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1657,7 +1984,7 @@ export const GridScan = ({
         if (s.paused || s.lookPaused) return;
         if (!player.locked) lockPointer(canvas);
         // a ping lands where the crosshair points
-        if (player.blend > 0.5 && s.clickEffect !== 'none' && !reduce) {
+        if (player.blend > 0.5 && s.clickEffect !== 'none' && !reduce && pingsOn) {
           const hit = crosshairHit();
           pings.unshift({ x: hit.x, y: hit.y, z: hit.z, age: 0 });
           if (pings.length > MAX_PINGS) pings.pop();
@@ -1752,6 +2079,34 @@ export const GridScan = ({
     const watchdog = window.setTimeout(() => {
       if (!drawnOnce && !document.hidden && visible) retry();
     }, 2500);
+
+    const control: RoomControl = {
+      kick: (up, side) => {
+        player.pitch = clamp(player.pitch + up * 0.35, -1.45, 1.45);
+        player.yaw = wrapAngle(player.yaw + side * 0.35);
+        kick.vp += up * 0.65 * 22;
+        kick.vy += side * 0.65 * 22;
+        wake();
+      },
+      impact: (x, y, z) => {
+        impacts.unshift({ x, y, z, age: 0 });
+        if (impacts.length > MAX_IMPACTS) impacts.pop();
+        wake();
+      },
+      aim: () => {
+        const d = viewDir();
+        return { o: [camPos.x, camPos.y, camPos.z], d: [d[0], d[1], d[2]] };
+      },
+      trace: (o, d) => traceSceneJS(o, d),
+      setPings: on => {
+        pingsOn = on;
+      },
+      setZoom: z => {
+        zoomTarget = clamp(z, 0.3, 1);
+        wake();
+      }
+    };
+    if (controlRefRef.current) controlRefRef.current.current = control;
 
     resize();
     wakeRef.current = wake;

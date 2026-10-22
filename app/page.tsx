@@ -5,8 +5,14 @@ import { useRouter } from 'next/navigation';
 import ProfileCard from './components/ProfileCard';
 import NetflixLoader from './components/NetflixLoader';
 import ParticleText from '@/components/ParticleText';
-import type { RoomCamera } from '@/components/GridScan';
-import GridScan, { lockPointer } from '@/components/GridScan';
+import type { RoomCamera, RoomControl } from '@/components/GridScan';
+import GridScan, { lockPointer, TRAIN_FRONT, TRAIN_GAP_H, TRAIN_GAP_HALF } from '@/components/GridScan';
+import WeaponView, { type WeaponViewApi } from './components/room/WeaponView';
+import Hotbar from './components/room/Hotbar';
+import RangeWorld, { type RangeWorldApi } from './components/room/RangeWorld';
+import { Arsenal, type WorldHit } from './components/room/arsenal';
+import { WEAPONS, weaponById } from './components/room/weapons';
+import { doorwayPolygon, polygonCss, screenCtx } from './components/room/place';
 import { ROOM_DOORS, DOOR_HEIGHT, doorLayout } from './roomDoors';
 import RoomTablet, { DEFAULT_ROOM_SETTINGS, ROOM_THEMES, RoomMusicConsole, type RoomSettings } from './components/RoomTablet';
 import {
@@ -184,6 +190,16 @@ export default function Home() {
   }, [roomSettings.effects, roomSettings.muted]);
   const theme = ROOM_THEMES.find((t) => t.id === roomSettings.theme) ?? ROOM_THEMES[0];
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // weapons and the training range behind the spawn wall
+  const controlRef = useRef<RoomControl | null>(null);
+  const weaponApi = useRef<WeaponViewApi | null>(null);
+  const worldRef = useRef<RangeWorldApi | null>(null);
+  const arsenal = useMemo(() => new Arsenal(), []);
+  const benchAim = useRef<string | null>(null);
+  const lastCamTime = useRef(0);
+  const [inRange, setInRange] = useState(false);
+  const inRangeRef = useRef(false);
+  const rangeSignRef = useRef<HTMLDivElement>(null);
   const onStep = useCallback((kind: 'step' | 'jump' | 'land', amount: number) => {
     if (kind === 'step') playStep(amount);
     else if (kind === 'land') playLand(amount);
@@ -227,11 +243,25 @@ export default function Home() {
       [boredLayer.current, 0.4, 0.9, 0.035],
     ];
     const signs = signRefs.current;
+    const dt = Math.min(0.05, Math.max(0, cam.time - lastCamTime.current));
+    lastCamTime.current = cam.time;
+    // weapons follow the body: bob, sway, sprint, spread
+    arsenal.setMotion(cam.speed, cam.grounded);
+    arsenal.update(dt);
+    weaponApi.current?.setMotion({ speed: cam.speed, grounded: cam.grounded, sprint: cam.sprinting, turn: cam.turnRate });
+    const nowInRange = cam.room === 1;
+    if (nowInRange !== inRangeRef.current) {
+      inRangeRef.current = nowInRange;
+      setInRange(nowInRange);
+    }
     if (cam.blend <= 0) {
       if (was > 0) {
         // back in the normal view: hand the layers back to handleEye
         stage.style.perspective = `${(1.25 * window.innerHeight).toFixed(0)}px`;
         stage.style.perspectiveOrigin = '';
+        stage.style.clipPath = '';
+        worldRef.current?.update(cam, dt, { visible: false, clip: null, above: false });
+        if (rangeSignRef.current) rangeSignRef.current.style.visibility = 'hidden';
         layers.forEach(([el]) => {
           if (!el) return;
           el.style.visibility = '';
@@ -326,6 +356,32 @@ export default function Home() {
       el.classList.toggle('is-aimed', cam.aimDoor === i);
     });
 
+    // the training range: drawn in its own layer; each room's content is only visible from the
+    // other room through the doorway (clipped to it on screen)
+    const ctx = screenCtx(cam);
+    const world = worldRef.current;
+    if (cam.trainOpen) {
+      const door = doorwayPolygon(ctx, TRAIN_FRONT, TRAIN_GAP_HALF, TRAIN_GAP_H);
+      // standing in the doorway itself the opening has no shape on screen: draw the hall whole
+      const p = cam.pos;
+      const inDoorway =
+        !door && p[2] - TRAIN_FRONT < 0.04 && Math.abs(p[0]) < TRAIN_GAP_HALF && p[1] + 0.5 < TRAIN_GAP_H;
+      if (cam.room === 1 || inDoorway) {
+        stage.style.clipPath = polygonCss(door, box.left, box.top);
+        world?.update(cam, dt, { visible: true, clip: null, above: true });
+      } else {
+        stage.style.clipPath = '';
+        world?.update(cam, dt, { visible: !!door, clip: polygonCss(door), above: false });
+      }
+      if (rangeSignRef.current) {
+        place(rangeSignRef.current, [0, -0.5 + TRAIN_GAP_H + 0.1, TRAIN_FRONT + 0.003], [-1, 0, 0], [0, -1, 0], [0, 0, 1], 0.0011 * H, cam.blend);
+      }
+    } else {
+      stage.style.clipPath = '';
+      world?.update(cam, dt, { visible: false, clip: null, above: false });
+      if (rangeSignRef.current) rangeSignRef.current.style.visibility = 'hidden';
+    }
+
     // things to play with: the music console and the light switch by the entrance, and three
     // stat holograms near the back wall that turn slowly in the air
     const items = itemRefs.current;
@@ -343,7 +399,15 @@ export default function Home() {
 
     // aim: whatever sits under the crosshair behaves as if hovered
     let label = '';
-    if (cam.blend > 0.9) {
+    benchAim.current = null;
+    if (cam.blend > 0.9 && cam.room === 1 && world && controlRef.current) {
+      const aim = controlRef.current.aim();
+      const id = world.aimItem(aim.o, aim.d);
+      if (id !== benchAim.current && id) playClick(1.3);
+      benchAim.current = id;
+      if (id) label = `E  ·  Pick up ${weaponById(id).name}`;
+    }
+    if (cam.blend > 0.9 && !label) {
       const hit = document.elementFromPoint(W / 2, H / 2) as HTMLElement | null;
       const target = hit?.closest<HTMLElement>('.profile-item, .bored-btn, [data-room-item]') ?? null;
       if (target !== aimed.current && target) playClick(1.4); // a faint tick as the crosshair finds something
@@ -361,7 +425,117 @@ export default function Home() {
     }
     if (cam.locked) lockWorks.current = true;
     hudRef.current?.classList.toggle('is-unlocked', !cam.locked && lockWorks.current);
-  }, [doorSpots]);
+  }, [doorSpots, arsenal]);
+
+  // weapons: hook the arsenal up to the view, the room and the range
+  useEffect(() => {
+    arsenal.view = weaponApi.current;
+    arsenal.control = controlRef.current;
+    arsenal.hooks = {
+      traceWorld: (o, d, maxT = 40) => {
+        const ctrl = controlRef.current;
+        const world = worldRef.current;
+        if (!ctrl) return null;
+        const toGap = (o2: number[]) => (Math.abs(d[2]) > 1e-6 ? (TRAIN_FRONT - o2[2]) / d[2] : -1);
+        const inGap = (p: number[]) => Math.abs(p[0]) < TRAIN_GAP_HALF && p[1] + 0.5 < TRAIN_GAP_H;
+        if (o[2] < TRAIN_FRONT) {
+          // from the hall: its geometry and bots first, then out through the doorway
+          const h = world?.raycast(o, d, maxT);
+          if (h) return { ...h, surface: 'range' } as WorldHit;
+          const t = toGap(o);
+          if (t > 0) {
+            const g = [o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t];
+            if (inGap(g) && t < maxT) {
+              const m = ctrl.trace([g[0], g[1], g[2] + 1e-4], d);
+              if (t + m.t < maxT) return { t: t + m.t, point: [m.x, m.y, m.z], surface: 'main' };
+            }
+          }
+          return null;
+        }
+        const m = ctrl.trace(o, d);
+        if (m.z < TRAIN_FRONT - 1e-5 && world) {
+          // went through the doorway into the hall
+          const t = toGap(o);
+          const g = [o[0] + d[0] * t, o[1] + d[1] * t, TRAIN_FRONT - 1e-4];
+          const h = world.raycast(g, d, maxT - t);
+          return h ? ({ ...h, t: t + h.t, surface: 'range' } as WorldHit) : null;
+        }
+        return m.t < maxT ? { t: m.t, point: [m.x, m.y, m.z], surface: 'main' } : null;
+      },
+      damageBot: (id, amount, head, point) => worldRef.current?.damage(id, amount, head, point) ?? false,
+      impact: (hit, kind) => {
+        if (hit.surface === 'range') worldRef.current?.impact({ t: hit.t, point: hit.point, normal: hit.normal ?? [0, 1, 0] }, kind);
+        else controlRef.current?.impact(hit.point[0], hit.point[1], hit.point[2]);
+      },
+    };
+  });
+  useEffect(() => {
+    worldRef.current?.setTheme(theme.scan);
+  });
+  // development only: a handle for automated play-throughs (stripped from production builds)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    (window as unknown as { __roomDebug?: unknown }).__roomDebug = { arsenal, controlRef, worldRef };
+  });
+  useEffect(() => {
+    weaponApi.current?.setTint(theme.scan);
+  }, [theme.scan]);
+  useEffect(() => {
+    const on = fps && !tabletOpen && openDoor < 0;
+    arsenal.setEnabled(on);
+    if (!fps) {
+      // back to the normal page: empty hands, weapons back on the bench
+      arsenal.reset();
+      worldRef.current?.restoreAll();
+    }
+    // the floating music player would sit right where the weapons are: hide it while playing
+    if (fps) document.documentElement.setAttribute('data-room-fps', '');
+    else document.documentElement.removeAttribute('data-room-fps');
+  }, [fps, tabletOpen, openDoor, arsenal]);
+
+  // weapon controls: 1-9 / scroll to switch, click to fire, right click to aim (or stab),
+  // R reload, F inspect
+  useEffect(() => {
+    if (!fps || openDoor >= 0 || tabletOpen) return undefined;
+    let wheelAt = 0;
+    const onDown = (event: MouseEvent) => {
+      if (lockWorks.current && !document.pointerLockElement) return;
+      if (event.button === 0 && arsenal.armed) arsenal.setTrigger(true);
+      if (event.button === 2) arsenal.setAlt(true);
+    };
+    const onUp = (event: MouseEvent) => {
+      if (event.button === 0) arsenal.setTrigger(false);
+      if (event.button === 2) arsenal.setAlt(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      const n = Number(event.key);
+      if (n >= 1 && n <= WEAPONS.length) arsenal.select(n - 1);
+      else if (event.code === 'KeyR') arsenal.reload();
+      else if (event.code === 'KeyF') arsenal.inspect();
+    };
+    const onWheel = (event: WheelEvent) => {
+      const now = performance.now();
+      if (now - wheelAt < 90 || Math.abs(event.deltaY) < 4) return;
+      wheelAt = now;
+      arsenal.cycle(event.deltaY > 0 ? 1 : -1);
+    };
+    const noMenu = (event: MouseEvent) => event.preventDefault();
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('contextmenu', noMenu);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('contextmenu', noMenu);
+      arsenal.setTrigger(false);
+      arsenal.setAlt(false);
+    };
+  }, [fps, openDoor, tabletOpen, arsenal]);
 
   const enterDoor = useCallback((i: number) => {
     setOpenDoor(i);
@@ -411,6 +585,13 @@ export default function Home() {
     const use = () => {
       // the click that recaptures the mouse shouldn't also open whatever is under the crosshair
       if (lockWorks.current && !document.pointerLockElement) return;
+      const benchItem = benchAim.current;
+      if (benchItem) {
+        worldRef.current?.take(benchItem);
+        arsenal.give(benchItem);
+        benchAim.current = null;
+        return;
+      }
       const target = aimed.current;
       const item = target?.dataset.roomItem;
       if (item) {
@@ -429,7 +610,7 @@ export default function Home() {
       }
     };
     const onDown = (event: PointerEvent) => {
-      if (event.button === 0) use();
+      if (event.button === 0 && !arsenal.armed) use();
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.code === 'KeyE' && !event.repeat) use();
@@ -440,7 +621,7 @@ export default function Home() {
       window.removeEventListener('pointerdown', onDown);
       window.removeEventListener('keydown', onKey);
     };
-  }, [fps, openDoor, tabletOpen, enterDoor]);
+  }, [fps, openDoor, tabletOpen, enterDoor, arsenal]);
 
   // Tab: hold the tablet up (frees the mouse) or put it away (captures it again)
   useEffect(() => {
@@ -638,6 +819,7 @@ export default function Home() {
           headBob={roomSettings.headBob}
           lights={roomSettings.lights ? 1 : 0}
           onStep={onStep}
+          controlRef={controlRef}
           cells={8}
           depth={3}
           scanDuration={2.4}
@@ -691,11 +873,18 @@ export default function Home() {
           <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> look</span>
           <span><kbd>Space</kbd> jump</span>
           <span><kbd>Shift</kbd> sprint</span>
-          <span><kbd>Click</kbd><kbd>E</kbd> use</span>
+          <span><kbd>E</kbd> use <i>(click with hands)</i></span>
+          <span><kbd>1</kbd>–<kbd>9</kbd> / scroll weapons</span>
+          <span><kbd>Click</kbd> fire · <kbd>RMB</kbd> aim</span>
+          <span><kbd>R</kbd> reload · <kbd>F</kbd> inspect</span>
           <span><kbd>Tab</kbd> tablet</span>
           <span><kbd>Esc</kbd> exit</span>
         </div>
       </div>
+
+      <WeaponView apiRef={weaponApi} visible={fps} />
+      <Hotbar arsenal={arsenal} visible={fps} inRange={inRange} />
+      <RangeWorld ref={worldRef} />
 
       {fps && (
         <RoomTablet
@@ -764,6 +953,12 @@ export default function Home() {
             NETFLIX
           </h1>
         </div> */}
+
+        {/* the way into the training range, over the doorway behind the spawn */}
+        <div ref={rangeSignRef} className="room-range-sign" aria-hidden="true">
+          <span>Behind you</span>
+          <strong>Training range</strong>
+        </div>
 
         {/* signs above the doors in first person */}
         {ROOM_DOORS.map((door, i) => (

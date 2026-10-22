@@ -35,6 +35,7 @@ export default function GlobalMusicPlayer() {
   const hidden = !mounted || loading || introPending;
   return (
     <div
+      className="global-music"
       aria-hidden={hidden || undefined}
       style={{
         opacity: hidden ? 0 : 1,
