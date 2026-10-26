@@ -6,6 +6,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { playMech } from '@/lib/roomAudio';
 import type { WeaponKind } from './weapons';
+import { canonDir, canonPoint, characterById, holdGrip, keepArm, slimSleeve, loadAvatar, makeAvatar, reachArm, resetPose, GRIP, type Avatar } from './avatar';
 
 /**
  * First-person weapons for the grid room: every gun (and the karambit) is modelled in code from
@@ -129,11 +130,31 @@ const anchor = (parent: THREE.Object3D, pos: [number, number, number]) => group(
 
 let withHands = true;
 
+/* the character's arms in the view: scale (model units -> view metres), how far forward of the
+   eyes the body sits, where the elbows point, and where a free left hand rests (model space) */
+const ARMS = { scale: 1.5, forward: 0.14, lift: 0.08, reach: 0.26, reachIn: -0.03, reachDown: 0.16 };
+// elbow poles and the free hand's rest, in canonical space (avatar.ts), for the right arm
+const POLE = new THREE.Vector3(-0.2, 0, 0.7);
+const POLE_LONG = new THREE.Vector3(-0.1, -0.4, 0.3); // the support arm under a rifle's handguard
+const REST = new THREE.Vector3(0.0, -0.05, 0.12);
+const mirrorZ = (v: THREE.Vector3) => new THREE.Vector3(v.x, v.y, -v.z);
+const POLE_L = mirrorZ(POLE);
+const POLE_LONG_L = mirrorZ(POLE_LONG);
+const REST_L = mirrorZ(REST);
+// how bright each character's arms are under the view's lights (set for gun metal)
+const TONE: Record<string, number> = { nyx: 0.32, draconia: 0.85, swordswoman: 0.8 };
+type ArmPair = { R: Avatar; L: Avatar; mirrored: boolean };
+
 /** A gloved hand gripping something: palm, four curled fingers, thumb, knuckle guard, and the
  *  forearm and sleeve running off towards the bottom of the view. */
 function hand(parent: THREE.Object3D, side: 1 | -1, pos: [number, number, number], rot: [number, number, number]) {
-  const g = group(parent, pos, rot);
-  if (!withHands) return g;
+  const anchor = group(parent, pos, rot);
+  // the grip itself: the character's own hands are posed onto it (see avatar.ts); the drawn
+  // glove below is only the stand-in until that model has loaded
+  anchor.name = side === 1 ? 'grip-R' : 'grip-L';
+  if (!withHands) return anchor;
+  const g = group(anchor);
+  g.name = 'glove';
   // palm and back of the hand
   box(g, [0.034, 0.07, 0.048], mat.glove, [side * 0.006, 0, 0.004], [0, 0, 0], 0.014);
   box(g, [0.03, 0.05, 0.012], mat.knuckle, [side * 0.017, 0.004, 0.006], [0, 0, 0], 0.005);
@@ -175,7 +196,7 @@ function hand(parent: THREE.Object3D, side: 1 | -1, pos: [number, number, number
   const seam = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.3, 0.003), mat.accent);
   seam.position.set(side * 0.038, 0.3, 0);
   arm.add(seam);
-  return g;
+  return anchor;
 }
 
 /* ── the weapons ────────────────────────────────────────────────────── */
@@ -603,13 +624,18 @@ function flashTexture() {
 export default function WeaponView({
   apiRef,
   visible,
+  character,
 }: {
   apiRef: { current: WeaponViewApi | null };
   visible: boolean;
+  /** whose arms hold the weapons (see avatar.ts) */
+  character: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
+  const characterRef = useRef(character);
+  characterRef.current = character;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -654,11 +680,80 @@ export default function WeaponView({
         model = BUILDERS[id]();
         model.root.traverse((o) => {
           o.frustumCulled = false;
+          if (o.name === 'glove' && !gloves) o.visible = false;
         });
         models.set(id, model);
       }
       return model;
     };
+
+    // the character's own arms, one pair per character, fetched the first time it's played
+    // (never with the page). The scan's left hand is in a pocket, so its left arm is a mirrored
+    // copy of the right; other characters have each side cut from the model.
+    const pairs = new Map<string, ArmPair | null>();
+    let disposed = false;
+    const wantArms = (id: string) => {
+      if (pairs.has(id)) return pairs.get(id) ?? null;
+      pairs.set(id, null);
+      const def = characterById(id);
+      loadAvatar(def.armsUrl ?? def.url)
+        .then((src) => {
+          if (disposed) return;
+          const R = makeAvatar(def, src);
+          const L = makeAvatar(def, src);
+          if (def.mirrorLeft) {
+            // flip across the body's middle: negate the model axis that points to the right
+            const right = canonDir(L, [0, 0, 1]);
+            const ax = [Math.abs(right.x), Math.abs(right.y), Math.abs(right.z)];
+            L.model.scale.setComponent(ax.indexOf(Math.max(...ax)), -1);
+          }
+          else {
+            keepArm(R, 'R');
+            keepArm(L, 'L');
+            if (def.sleeve) {
+              slimSleeve(R, 'R', def.sleeve);
+              slimSleeve(L, 'L', def.sleeve);
+            }
+          }
+          for (const a of [R, L]) {
+            for (const mesh of a.meshes) {
+              const m = mesh.material as THREE.MeshStandardMaterial;
+              m.color.multiplyScalar(TONE[id] ?? 0.8);
+              m.envMapIntensity = 0.18;
+              m.roughness = Math.max(m.roughness, 0.85);
+              m.metalness = 0;
+            }
+            a.root.visible = false;
+            scene.add(a.root);
+          }
+          pairs.set(id, { R, L, mirrored: !!def.mirrorLeft });
+          placeArms();
+        })
+        .catch(() => pairs.delete(id));
+      return null;
+    };
+    let gloves = true;
+    const showGloves = (on: boolean) => {
+      if (gloves === on) return;
+      gloves = on;
+      for (const m of models.values()) m.root.traverse((o) => { if (o.name === 'glove') o.visible = on; });
+    };
+    let shownPair: ArmPair | null = null;
+    let reachK = 0;
+    // eyes on the camera, the body pulled forward a little so the hands reach the guns
+    const placeArms = () => {
+      for (const pair of pairs.values()) {
+        if (!pair) continue;
+        for (const a of [pair.R, pair.L]) {
+          const k = (ARMS.scale * 0.98) / a.def.height;
+          a.root.scale.setScalar(k);
+          a.root.position.set(-a.eye.x * k, -a.eye.y * k + ARMS.lift, -a.eye.z * k - ARMS.forward);
+        }
+      }
+    };
+    if (process.env.NODE_ENV !== 'production') {
+      (window as unknown as { __armsDebug: unknown }).__armsDebug = { GRIP, ARMS, POLE, POLE_LONG, REST, placeArms, camera, TONE };
+    }
 
     // muzzle flash and brass
     const flash = new THREE.Mesh(
@@ -821,6 +916,12 @@ export default function WeaponView({
         if (canvas.style.opacity !== '0') renderer.clear();
         return;
       }
+      const pair = wantArms(characterRef.current);
+      if (pair !== shownPair) {
+        if (shownPair) shownPair.R.root.visible = shownPair.L.root.visible = false;
+        shownPair = pair;
+      }
+      showGloves(!pair);
 
       // switching: lower the old one, then raise the new one
       if (lowering) {
@@ -1076,6 +1177,33 @@ export default function WeaponView({
         holder.position.copy(pos);
         holder.rotation.copy(rot);
 
+        // the character's own arms, reaching for whatever the weapon gives them to hold
+        if (shownPair) {
+          const { R: armR, L: armL, mirrored } = shownPair;
+          armR.root.visible = armL.root.visible = !!current;
+          if (current) {
+            resetPose(armR);
+            resetPose(armL);
+            const long = current.kind === 'rifle' || current.kind === 'smg' || current.kind === 'shotgun';
+            // under a long gun the support shoulder comes forward (and in), so that arm reaches the
+            // handguard bent, from the lower left, instead of stretching past the lens
+            reachK += ((long ? 1 : 0) - reachK) * Math.min(1, dt * 10);
+            armL.root.position.z = armR.root.position.z - ARMS.reach * reachK;
+            armL.root.position.x = armR.root.position.x + ARMS.reachIn * reachK;
+            armL.root.position.y = armR.root.position.y - ARMS.reachDown * reachK;
+            holder.updateMatrixWorld(true);
+            const gripR = current.root.getObjectByName('grip-R');
+            const gripL = current.root.getObjectByName('grip-L');
+            const curl = armR.def.gripCurl;
+            if (gripR) holdGrip(armR, 'R', gripR, POLE, curl);
+            // a mirrored left arm is the right one, so its bones are still the 'R' ones
+            const sideL = mirrored ? 'R' : 'L';
+            const poleL = mirrored ? (long ? POLE_LONG : POLE) : long ? POLE_LONG_L : POLE_L;
+            if (gripL) holdGrip(armL, sideL, gripL, poleL, curl, 'L');
+            else reachArm(armL, sideL, canonPoint(armL, mirrored ? REST : REST_L), canonPoint(armL, mirrored ? POLE : POLE_L)); // a free hand drops out of sight
+          }
+        }
+
         // muzzle flash
         if (flashT < 0.05 && m.kind !== 'melee') {
           m.muzzle.getWorldPosition(flash.position);
@@ -1112,6 +1240,7 @@ export default function WeaponView({
     raf = requestAnimationFrame(frame);
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
       apiRef.current = null;

@@ -81,15 +81,19 @@ export function placeInRoom(
  * of the camera. Null when none of it is in view.
  */
 export function doorwayPolygon(ctx: ScreenCtx, front: number, halfW: number, height: number): [number, number][] | null {
-  const { cam, H, ox, oy } = ctx;
-  const [r, u, f] = [cam.right, cam.up, cam.forward];
-  const C = cam.pos;
-  const world = [
+  return quadPolygon(ctx, [
     [-halfW, -0.5, front],
     [halfW, -0.5, front],
     [halfW, -0.5 + height, front],
     [-halfW, -0.5 + height, front],
-  ];
+  ]);
+}
+
+/** A flat quad in the room (corners in order) on screen, clipped to what's in front of the eye. */
+export function quadPolygon(ctx: ScreenCtx, world: number[][]): [number, number][] | null {
+  const { cam, H, ox, oy } = ctx;
+  const [r, u, f] = [cam.right, cam.up, cam.forward];
+  const C = cam.pos;
   const pts = world.map((p) => {
     const q = [p[0] - C[0], p[1] - C[1], p[2] - C[2]];
     return [dot(r, q), dot(u, q), dot(f, q)];

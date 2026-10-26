@@ -129,6 +129,15 @@ export default function RootLayout({
           onto <html>/<body> before React loads; ignore those two elements' own attributes so
           that isn't reported as a hydration mismatch. Their children are still checked. */}
       <html lang="en" suppressHydrationWarning>
+        <head>
+          {/* before anything paints: a visit that has already seen the opening title skips its
+              black cover straight away (see app/page.tsx) */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: "try{if(sessionStorage.getItem('netflixLoaderSeen'))document.documentElement.setAttribute('data-intro-seen','')}catch(e){}",
+            }}
+          />
+        </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
           suppressHydrationWarning

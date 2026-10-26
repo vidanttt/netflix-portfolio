@@ -21,7 +21,13 @@ import { weaponById } from './weapons';
 export type RangeHit = { t: number; point: number[]; normal: number[]; bot?: number; head?: boolean };
 
 export type RangeWorldApi = {
-  update: (cam: RoomCamera, dt: number, opts: { visible: boolean; clip: string | null; above: boolean }) => void;
+  /** `rect`: the part of the screen to draw (viewport px: x, y, width, height), when the hall is
+   *  only seen through the doorway */
+  update: (
+    cam: RoomCamera,
+    dt: number,
+    opts: { visible: boolean; clip: string | null; above: boolean; rect?: number[] | null; sealed?: number; fade?: number }
+  ) => void;
   raycast: (o: number[], d: number[], maxT?: number) => RangeHit | null;
   damage: (bot: number, amount: number, head: boolean, point: number[]) => boolean;
   impact: (hit: RangeHit, kind?: 'bullet' | 'blade') => void;
@@ -143,6 +149,7 @@ type BotRig = {
   hips: THREE.Group;
   torso: THREE.Group;
   head: THREE.Group;
+  skull: THREE.Mesh;
   legs: { thigh: THREE.Group; knee: THREE.Group }[];
   arms: { shoulder: THREE.Group; elbow: THREE.Group }[];
   shell: THREE.MeshStandardMaterial;
@@ -175,9 +182,8 @@ type Bot = {
 };
 
 const BOT_H = 0.6;
-const HEAD_Y = 0.55;
-const HEAD_R = 0.058;
-const BODY_R = 0.07;
+/** a shot passing this close to the middle of a bot's skull is a headshot */
+const HEAD_GIVE = 0.056;
 
 function capsule(r: number, len: number, m: THREE.Material) {
   const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 14), m);
@@ -298,7 +304,7 @@ function makeBot(accent: THREE.Color): BotRig {
   pad.rotation.x = -Math.PI / 2;
   pad.position.y = 0.002;
   root.add(pad);
-  return { root, body, hips, torso, head, legs, arms, shell, dark, glow, bar, barFill, pad };
+  return { root, body, hips, torso, head, skull, legs, arms, shell, dark, glow, bar, barFill, pad };
 }
 
 /* ── the component ──────────────────────────────────────────────────── */
@@ -445,6 +451,15 @@ const RangeWorld = forwardRef<RangeWorldApi>(function RangeWorld(_props, ref) {
     const lintel = plane(RANGE.gapHalf * 2, lintelH, wallMat, [1, lintelH / 0.5]);
     lintel.position.copy(V(0, RANGE.floor + RANGE.gapH + lintelH / 2, RANGE.front));
     add(lintel);
+    // a dark veil in the doorway, shown while the main room isn't being drawn (you're deep in
+    // the hall); it never blocks shots
+    const seal = new THREE.Mesh(
+      new THREE.PlaneGeometry(RANGE.gapHalf * 2, RANGE.gapH),
+      new THREE.MeshBasicMaterial({ color: 0x060709, transparent: true, opacity: 1, depthWrite: true })
+    );
+    seal.position.copy(V(0, RANGE.floor + RANGE.gapH / 2, RANGE.front + 0.002));
+    seal.visible = false;
+    scene.add(seal);
     // doorway frame
     const frameMat = trimWarm;
     for (const [w, h, x, y] of [
@@ -762,7 +777,8 @@ const RangeWorld = forwardRef<RangeWorldApi>(function RangeWorld(_props, ref) {
     const raycaster = new THREE.Raycaster();
     const tmpO = new THREE.Vector3();
     const tmpD = new THREE.Vector3();
-    const headPos = (b: Bot) => [b.x, b.y + HEAD_Y, b.z];
+    const skullAt = new THREE.Vector3();
+    const tmpP = new THREE.Vector3();
     const raycast = (o: number[], d: number[], maxT = 30): RangeHit | null => {
       tmpO.copy(V(o[0], o[1], o[2]));
       tmpD.copy(V(d[0], d[1], d[2])).normalize();
@@ -775,39 +791,42 @@ const RangeWorld = forwardRef<RangeWorldApi>(function RangeWorld(_props, ref) {
         const n = h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : new THREE.Vector3(0, 1, 0);
         best = { t: h.distance, point: toWorld(h.point), normal: toWorld(n) };
       }
+      // bots: against the meshes exactly as they're drawn this frame (walk bob, lean, flinch);
+      // anything in the head counts as a headshot, with a sliver of give round the skull
       for (const b of bots) {
         if (b.state !== 'alive') continue;
-        const hc = headPos(b);
-        const oc = [o[0] - hc[0], o[1] - hc[1], o[2] - hc[2]];
-        const bb = oc[0] * d[0] + oc[1] * d[1] + oc[2] * d[2];
-        const cc = oc[0] * oc[0] + oc[1] * oc[1] + oc[2] * oc[2] - HEAD_R * HEAD_R;
-        const disc = bb * bb - cc;
-        if (disc >= 0) {
-          const t = -bb - Math.sqrt(disc);
-          if (t > 0 && t < maxT && (!best || t < best.t)) {
-            const p = [o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t];
-            best = { t, point: p, normal: [p[0] - hc[0], p[1] - hc[1], p[2] - hc[2]], bot: b.id, head: true };
+        const rig = b.rig;
+        rig.root.updateMatrixWorld(true);
+        const hit = raycaster.intersectObject(rig.body, true)[0];
+        let head = false;
+        let hp: THREE.Vector3 | null = null;
+        let ht = Infinity;
+        if (hit) {
+          ht = hit.distance;
+          hp = hit.point;
+          for (let o: THREE.Object3D | null = hit.object; o && o !== rig.body; o = o.parent) if (o === rig.head) head = true;
+        }
+        if (!head) {
+          rig.skull.getWorldPosition(skullAt);
+          const r = raycaster.ray.distanceSqToPoint(skullAt);
+          if (r < HEAD_GIVE * HEAD_GIVE) {
+            const t = raycaster.ray.closestPointToPoint(skullAt, tmpP).distanceTo(tmpO);
+            if (t < ht + 0.06) {
+              head = true;
+              ht = Math.min(ht, t);
+              hp = tmpP.clone();
+            }
           }
         }
-        const px = o[0] - b.x;
-        const pz = o[2] - b.z;
-        const a = d[0] * d[0] + d[2] * d[2];
-        if (a < 1e-9) continue;
-        const k = px * d[0] + pz * d[2];
-        const c = px * px + pz * pz - BODY_R * BODY_R;
-        const disc2 = k * k - a * c;
-        if (disc2 < 0) continue;
-        const t = (-k - Math.sqrt(disc2)) / a;
-        const y = o[1] + d[1] * t;
-        if (t > 0 && t < maxT && y > b.y && y < b.y + HEAD_Y - HEAD_R * 0.7 && (!best || t < best.t)) {
-          const p = [o[0] + d[0] * t, y, o[2] + d[2] * t];
-          best = { t, point: p, normal: [p[0] - b.x, 0, p[2] - b.z], bot: b.id, head: false };
-        }
+        if (!hp || ht > maxT || (best && ht >= best.t)) continue;
+        const n = hp.clone().sub(head ? skullAt : rig.root.position);
+        best = { t: ht, point: toWorld(hp), normal: toWorld(n), bot: b.id, head };
       }
       return best;
     };
 
     let themeHex = '#7dd3fc';
+    if (process.env.NODE_ENV !== 'production') (window as unknown as { __rangeDebug: unknown }).__rangeDebug = { bots, renderer };
     const api: RangeWorldApi = {
       raycast,
       update: (cam, dt, opts) => {
@@ -817,6 +836,12 @@ const RangeWorld = forwardRef<RangeWorldApi>(function RangeWorld(_props, ref) {
         canvas.style.clipPath = opts.clip ?? '';
         overlay.style.clipPath = opts.clip ?? '';
         canvas.style.zIndex = opts.above ? '12' : '9';
+        // 0..1: how far the doorway is veiled over (the main room fading out of being drawn)
+        const sealed = opts.sealed ?? 0;
+        canvas.style.opacity = String(opts.fade ?? 1);
+        overlay.style.opacity = String(opts.fade ?? 1);
+        seal.visible = sealed > 0.001;
+        (seal.material as THREE.MeshBasicMaterial).opacity = sealed;
         overlay.style.zIndex = opts.above ? '13' : '9';
         // the grid room's camera, mirrored into three.js
         const W2 = window.innerWidth;
@@ -1008,6 +1033,14 @@ const RangeWorld = forwardRef<RangeWorldApi>(function RangeWorld(_props, ref) {
           }
         }
 
+        // through the doorway: only its rectangle, shadows frozen; inside: everything
+        const rect = opts.rect;
+        if (rect) {
+          renderer.setScissorTest(true);
+          renderer.setScissor(rect[0], H2 - rect[1] - rect[3], rect[2], rect[3]);
+        } else renderer.setScissorTest(false);
+        if (!rect && !renderer.shadowMap.autoUpdate) renderer.shadowMap.needsUpdate = true;
+        renderer.shadowMap.autoUpdate = !rect;
         renderer.render(scene, camera);
 
         // damage numbers

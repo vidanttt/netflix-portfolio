@@ -11,6 +11,11 @@ export type RoomSettings = {
   sensitivity: number;
   fov: number;
   headBob: boolean;
+  /** who you are: your arms in first person, and you in the mirror (see room/avatar.ts) */
+  character: string;
+  crosshair: string;
+  /** 'auto' inverts whatever is behind it */
+  crosshairColor: string;
 };
 
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
@@ -21,7 +26,41 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   sensitivity: 1,
   fov: 1,
   headBob: true,
+  character: 'nyx',
+  crosshair: 'cross',
+  crosshairColor: 'auto',
 };
+
+export const CROSSHAIRS = [
+  { id: 'cross', name: 'Cross' },
+  { id: 'tee', name: 'T' },
+  { id: 'plus', name: 'Plus' },
+  { id: 'circle', name: 'Circle' },
+  { id: 'dot', name: 'Dot' },
+];
+export const CROSSHAIR_COLORS = [
+  { id: 'auto', name: 'Invert' },
+  { id: '#ffffff', name: 'White' },
+  { id: '#7cff6b', name: 'Green' },
+  { id: '#22e3ff', name: 'Cyan' },
+  { id: '#ffe14d', name: 'Yellow' },
+  { id: '#ff4fd8', name: 'Pink' },
+];
+
+/** The crosshair itself (the HUD's, and the tablet's previews): four lines, a dot and a ring;
+ *  the style decides which show. Lines open up with `--room-bloom`. */
+export function CrosshairMark({ kind, color }: { kind: string; color: string }) {
+  return (
+    <span className={`ch-mark ch-${kind}${color === 'auto' ? ' ch-invert' : ''}`} style={color === 'auto' ? undefined : { color }}>
+      <i className="ch-t" />
+      <i className="ch-b" />
+      <i className="ch-l" />
+      <i className="ch-r" />
+      <i className="ch-dot" />
+      <i className="ch-ring" />
+    </span>
+  );
+}
 
 /** Colour themes for the room: grid lines and the light. */
 export const ROOM_THEMES: { id: string; name: string; lines: string; scan: string }[] = [
@@ -32,6 +71,8 @@ export const ROOM_THEMES: { id: string; name: string; lines: string; scan: strin
   { id: 'gold', name: 'Gold', lines: '#5a4f3a', scan: '#fcd34d' },
   { id: 'mono', name: 'Mono', lines: '#555555', scan: '#f5f5f5' },
 ];
+
+import { CHARACTERS } from './room/avatar';
 
 type MusicState = { playing: boolean; volume: number; muted: boolean; title: string; artist: string };
 
@@ -115,6 +156,29 @@ export default function RoomTablet({ open, settings, onChange, onClose, onLeave,
           </header>
 
           <div className="rt-grid">
+            <section className="rt-card rt-card--wide">
+              <h4>Character</h4>
+              <div className="rt-chars" role="radiogroup" aria-label="Character">
+                {CHARACTERS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={settings.character === c.id}
+                    className={settings.character === c.id ? 'is-on' : ''}
+                    onClick={() => set({ character: c.id })}
+                    tabIndex={open ? 0 : -1}
+                  >
+                    <strong>{c.name}</strong>
+                    <span>{c.blurb}</span>
+                  </button>
+                ))}
+              </div>
+              {CHARACTERS.find((c) => c.id === settings.character)?.credit && (
+                <p className="rt-credit">{CHARACTERS.find((c) => c.id === settings.character)!.credit}</p>
+              )}
+            </section>
+
             <section className="rt-card">
               <h4>Music</h4>
               <p className="rt-track">
@@ -219,6 +283,45 @@ export default function RoomTablet({ open, settings, onChange, onClose, onLeave,
                 />
               </label>
               <Toggle label="Head bob" on={settings.headBob} onToggle={() => set({ headBob: !settings.headBob })} open={open} />
+            </section>
+
+            <section className="rt-card rt-card--wide">
+              <h4>Crosshair</h4>
+              <div className="rt-xhair-row">
+                <div className="rt-xhairs" role="radiogroup" aria-label="Crosshair style">
+                  {CROSSHAIRS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={settings.crosshair === c.id}
+                      aria-label={c.name}
+                      title={c.name}
+                      className={settings.crosshair === c.id ? 'is-on' : ''}
+                      onClick={() => set({ crosshair: c.id })}
+                      tabIndex={open ? 0 : -1}
+                    >
+                      <CrosshairMark kind={c.id} color={settings.crosshairColor === 'auto' ? '#ffffff' : settings.crosshairColor} />
+                    </button>
+                  ))}
+                </div>
+                <div className="rt-themes" role="radiogroup" aria-label="Crosshair colour">
+                  {CROSSHAIR_COLORS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={settings.crosshairColor === c.id}
+                      aria-label={c.name}
+                      title={c.name}
+                      className={`${settings.crosshairColor === c.id ? 'is-on' : ''}${c.id === 'auto' ? ' rt-swatch-invert' : ''}`}
+                      style={{ ['--swatch' as string]: c.id === 'auto' ? '#888' : c.id }}
+                      onClick={() => set({ crosshairColor: c.id })}
+                      tabIndex={open ? 0 : -1}
+                    />
+                  ))}
+                </div>
+              </div>
             </section>
           </div>
 

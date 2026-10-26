@@ -465,28 +465,53 @@ img, [data-nimg] {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 22px;
-  height: 22px;
-  transform: translate(-50%, -50%);
-  mix-blend-mode: difference;
+  width: 0;
+  height: 0;
+  transition: opacity 0.12s ease;
 }
-.room-crosshair {
-  background:
-    linear-gradient(#fff, #fff) center top / 2px 7px no-repeat,
-    linear-gradient(#fff, #fff) center bottom / 2px 7px no-repeat,
-    linear-gradient(#fff, #fff) left center / 7px 2px no-repeat,
-    linear-gradient(#fff, #fff) right center / 7px 2px no-repeat;
-}
-.room-crosshair::after {
-  content: '';
+/* aiming down sights: the sights take over */
+html[data-room-ads] .room-crosshair { opacity: 0; transition-duration: 0.06s; }
+
+/* crosshair styles (the HUD and the tablet's previews) */
+.ch-mark {
+  --gap: calc(4px + var(--room-bloom, 0) * 11px);
+  --len: 7px;
+  --th: 2px;
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 2px;
-  height: 2px;
-  transform: translate(-50%, -50%);
-  background: #fff;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  color: #fff;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85));
 }
+.ch-mark.ch-invert { mix-blend-mode: difference; filter: none; }
+.ch-mark i { position: absolute; display: block; background: currentColor; }
+.ch-mark .ch-t, .ch-mark .ch-b { width: var(--th); height: var(--len); left: calc(var(--th) / -2); }
+.ch-mark .ch-t { bottom: var(--gap); }
+.ch-mark .ch-b { top: var(--gap); }
+.ch-mark .ch-l, .ch-mark .ch-r { height: var(--th); width: var(--len); top: calc(var(--th) / -2); }
+.ch-mark .ch-l { right: var(--gap); }
+.ch-mark .ch-r { left: var(--gap); }
+.ch-mark .ch-dot { width: 2px; height: 2px; left: -1px; top: -1px; }
+.ch-mark .ch-ring {
+  --ring: calc(16px + var(--room-bloom, 0) * 20px);
+  width: var(--ring);
+  height: var(--ring);
+  left: calc(var(--ring) / -2);
+  top: calc(var(--ring) / -2);
+  background: none;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  display: none;
+}
+.ch-tee .ch-t { display: none; }
+.ch-plus { --gap: calc(var(--room-bloom, 0) * 11px); --len: 9px; }
+.ch-plus .ch-dot { display: none; }
+.ch-circle .ch-t, .ch-circle .ch-b, .ch-circle .ch-l, .ch-circle .ch-r { display: none; }
+.ch-circle .ch-ring { display: block; }
+.ch-mark.ch-dot .ch-t, .ch-mark.ch-dot .ch-b, .ch-mark.ch-dot .ch-l, .ch-mark.ch-dot .ch-r { display: none; }
+.ch-mark.ch-dot .ch-dot { width: 4px; height: 4px; left: -2px; top: -2px; border-radius: 50%; }
 .room-keys {
   position: absolute;
   left: 50%;
@@ -761,37 +786,6 @@ img, [data-nimg] {
 .room-switch.is-on .room-switch-rocker i { bottom: 48px; background: #7dd3fc; box-shadow: 0 0 18px rgba(125, 211, 252, 0.7); }
 .room-switch-state { font-size: 15px; font-weight: 700; }
 
-/* stat holograms near the back wall */
-.room-holo { width: 280px; }
-.room-holo-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 18px 0 16px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(125, 211, 252, 0.14), rgba(125, 211, 252, 0.03));
-  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.3), 0 0 50px rgba(125, 211, 252, 0.12);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
-}
-.room-holo-inner strong {
-  font-size: 64px;
-  line-height: 1;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  background: linear-gradient(180deg, #fff, #7dd3fc);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.room-holo-inner span { margin-top: 6px; font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
-.room-holo.is-aimed .room-holo-inner { transform: scale(1.08); box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.7), 0 0 70px rgba(125, 211, 252, 0.3); }
-.room-holo.is-popped .room-holo-inner { animation: room-holo-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
-@keyframes room-holo-pop {
-  0% { transform: scale(1.08); }
-  35% { transform: scale(1.22) rotateY(180deg); }
-  100% { transform: scale(1.08) rotateY(360deg); }
-}
-
 /* ============================================================
    Grid room: the tablet (Tab)
    ============================================================ */
@@ -888,6 +882,47 @@ img, [data-nimg] {
 .rt-switch.is-on { background: #7dd3fc; }
 .rt-switch.is-on::after { transform: translateX(18px); }
 .rt-themes { display: flex; flex-wrap: wrap; gap: 8px; }
+.rt-card--wide { grid-column: 1 / -1; }
+.rt-xhair-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.rt-xhairs { display: flex; flex-wrap: wrap; gap: 8px; }
+.rt-xhairs button {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.rt-xhairs button:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22); }
+.rt-xhairs button:active { transform: scale(0.96); }
+.rt-xhairs button.is-on { box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.85), 0 0 14px rgba(125, 211, 252, 0.18); }
+.rt-xhairs .ch-mark { left: 50%; top: 50%; --room-bloom: 0; }
+.rt-themes button.rt-swatch-invert { background: linear-gradient(135deg, #fff 50%, #111 50%); }
+.rt-chars { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.rt-chars button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.rt-chars button:hover { background: rgba(255, 255, 255, 0.06); }
+.rt-chars button:active { transform: scale(0.98); }
+.rt-chars button.is-on { background: rgba(125, 211, 252, 0.1); box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.75); }
+.rt-chars strong { font-size: 14px; font-weight: 700; }
+.rt-chars span { font-size: 11px; color: rgba(255, 255, 255, 0.5); letter-spacing: 0.02em; }
+.rt-credit { margin: 0; font-size: 10.5px; color: rgba(255, 255, 255, 0.38); }
 .rt-themes button { width: 28px; height: 28px; border-radius: 999px; border: 0; cursor: pointer; background: var(--swatch); box-shadow: 0 0 0 2px #111319, 0 0 0 3px rgba(255, 255, 255, 0.12); transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .rt-themes button:hover { transform: scale(1.1); }
 .rt-themes button.is-on { box-shadow: 0 0 0 2px #111319, 0 0 0 4px #fff, 0 0 16px var(--swatch); }
@@ -938,7 +973,7 @@ img, [data-nimg] {
 @media (max-height: 560px) { .room-keys { font-size: 10px; gap: 3px; padding: 9px 11px; } }
 
 /* crosshair spreads with movement and spraying */
-.room-crosshair { transition: width 0.08s ease, height 0.08s ease; width: calc(22px + var(--room-bloom, 0) * 22px); height: calc(22px + var(--room-bloom, 0) * 22px); }
+
 
 /* the training range layer (bots, damage numbers, the exit sign) */
 .room-range {
@@ -1121,6 +1156,8 @@ html[data-room-fps] .global-music { opacity: 0 !important; pointer-events: none 
   pointer-events: none;
 }
 .range-overlay { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+/* you, in the back wall's mirror: over the room, under its panels */
+.mirror-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; }
 .range-dmg {
   position: absolute;
   left: 0;
@@ -1225,3 +1262,60 @@ html[data-room-fps] .global-music { opacity: 0 !important; pointer-events: none 
   .room-weaponhud-ammo strong { font-size: 40px; }
   .room-session > div { min-width: 50px; padding: 6px 8px; }
 }
+
+/* ── door layer and the nether portal ─────────────────────────────── */
+.doors-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; }
+.room-door-sign { --door: 125, 211, 252; }
+.room-door-sign { box-shadow: inset 0 0 0 1px rgba(var(--door), 0.26), 0 0 30px rgba(var(--door), 0.08); }
+.room-door-sign.is-aimed { box-shadow: inset 0 0 0 1px rgba(var(--door), 0.7), 0 0 44px rgba(var(--door), 0.3); }
+.room-door-sign .room-door-tag { color: rgba(var(--door), 0.9); }
+.portal-warp {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  background: #12021f;
+  animation: portal-warp-in 2s cubic-bezier(0.5, 0, 0.75, 0.35) forwards;
+}
+/* the game stretches one tile over the screen; the sway is its nausea effect */
+.portal-warp-canvas {
+  position: absolute;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
+  image-rendering: pixelated;
+  animation: portal-sway 2.4s ease-in-out infinite;
+}
+.portal-warp.is-held { cursor: pointer; }
+.portal-warp-note {
+  position: absolute;
+  left: 50%;
+  bottom: 9vh;
+  translate: -50% 0;
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: rgba(245, 232, 255, 0.82);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  animation: portal-note-in 0.5s ease-out both;
+}
+@keyframes portal-warp-in {
+  from { opacity: 0; }
+  to { opacity: 0.94; }
+}
+@keyframes portal-sway {
+  0%, 100% { transform: scale(1.02) rotate(-1.2deg) skewX(-2deg); }
+  50% { transform: scale(1.08) rotate(1.2deg) skewX(2deg); }
+}
+@keyframes portal-note-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portal-warp, .portal-warp-canvas { animation-duration: 0.01s; }
+}
+
+/* the opening title's black cover, until the page knows whether to play it */
+.intro-cover { position: fixed; inset: 0; z-index: 200; background: #000; }
+html[data-intro-seen] .intro-cover { display: none; }

@@ -35,6 +35,9 @@ export interface GridScanProps extends Omit<HTMLAttributes<HTMLDivElement>, 'sty
   modelsPath?: string;
   enableGyro?: boolean;
   intro?: boolean;
+  /** build everything and draw the first frame, but hold still (and keep the intro waiting)
+   *  until this turns false: the room loads behind the opening title */
+  hold?: boolean;
   lightMode?: boolean;
   dpr?: number;
   /** Called every frame with the camera's offset, normalised to -1..1 (x: right, y: up). */
@@ -88,6 +91,9 @@ export type RoomControl = {
   setPings: (on: boolean) => void;
   /** aim-down-sights: field of view (and sensitivity) multiplier, 1 = none */
   setZoom: (zoom: number) => void;
+  /** whether any of the main room is on screen (in the training hall with the doorway out of
+   *  view it isn't: the room keeps running but skips drawing) */
+  setMainVisible: (on: boolean) => void;
 };
 
 export type RoomCamera = {
@@ -115,6 +121,12 @@ export type RoomCamera = {
   turnRate: [number, number];
   /** room width / height */
   aspect: number;
+  /** depth of the main room (its back wall, where the mirror hangs) */
+  depth: number;
+  /** the player's body: feet, facing (yaw 0 looks down +z), look pitch, vertical speed */
+  body: { x: number; y: number; z: number; yaw: number; pitch: number; vy: number };
+  /** first person is on (not just blending) */
+  fps: boolean;
 };
 
 type Settings = {
@@ -140,10 +152,13 @@ type Settings = {
   clickEffect: GridScanClickEffect;
   enableGyro: boolean;
   intro: boolean;
+  hold: boolean;
   lightMode: boolean;
   dpr?: number;
   fps: boolean;
-  doors: { side: number; z: number }[];
+  /** `color` (hex) tints a door's frame, seams and light; a `portal` is drawn by the page's
+   *  door layer, so the room only adds its glow round the frame and on the floor */
+  doors: { side: number; z: number; color?: string; portal?: boolean; dressed?: boolean }[];
   openDoor: number;
   paused: boolean;
   lookPaused: boolean;
@@ -183,7 +198,7 @@ const MIN_EYE_ASPECT = 0.95;
 const EYE_DISTANCE = 1.25;
 // First-person mode, in room units (the room is 1 tall; the window/screen sits at z = 0)
 const FPS_FRONT = -1; // the room gets a front wall behind where the window was
-const FPS_EYE = 0.58; // eye height above the floor
+const FPS_EYE = 0.58; // eye height above the floor (FPS_EYE_HEIGHT)
 const FPS_START_Z = -0.6;
 const FPS_RADIUS = 0.12;
 const FPS_SPEED = 0.75;
@@ -200,6 +215,9 @@ export const TRAIN_FRONT = -1; // the shared wall (= FPS_FRONT)
 export const TRAIN_BACK = -4.2;
 export const TRAIN_GAP_HALF = 0.2; // doorway half width
 export const TRAIN_GAP_H = 0.72; // doorway height above the floor
+/** the full-length mirror on the back wall (first person): centre x, bottom y, half width, height */
+export const MIRROR = { x: 0, bottom: -0.47, halfW: 0.19, height: 0.8 };
+export const FPS_EYE_HEIGHT = 0.58;
 const MAX_IMPACTS = 16;
 const IMPACT_LIFE = 6;
 const DOOR_W = 0.34;
@@ -256,6 +274,7 @@ uniform float uFocal;
 uniform vec2 uShift;
 uniform float uFront;
 uniform vec4 uDoors[8];
+uniform vec4 uDoorTint[8]; // rgb, a: 0 plain, 1 portal, 2 dressed (the door layer draws the leaves)
 uniform int uDoorCount;
 uniform vec2 uDoorSize;
 uniform float uLights;
@@ -264,6 +283,7 @@ uniform float uTrainBack;
 uniform vec2 uGap;
 uniform vec3 uAccent;
 uniform vec4 uImpacts[16];
+uniform vec4 uMirror; // x centre, y bottom, half width, height (height 0 = none)
 uniform int uImpactCount;
 in vec2 vUv;
 layout(location = 0) out vec4 outColor;
@@ -723,6 +743,29 @@ void paintDoors(inout vec4 color, inout float energy, vec3 h, int face, float pl
     float open = dr.z;
     float glow = dr.w;
     float hw = uDoorSize.x * 0.5;
+    vec3 tint = mix(uScanColor, uDoorTint[i].rgb, 0.85);
+    bool portal = uDoorTint[i].a > 0.5 && uDoorTint[i].a < 1.5;
+    float plain = step(uDoorTint[i].a, 1.5); // dressed doors: only the light beyond and on the floor
+    if (portal) {
+      // a nether portal (drawn by the door layer): its purple light on the wall round the frame
+      // and across the floor, breathing slowly
+      float breath = 0.85 + 0.15 * sin(uTime * 1.7 + float(i));
+      if (face == 0 && sign(plane) == dr.x) {
+        float u = h.z - dr.y;
+        float v = h.y + 0.5;
+        float e = max(abs(u) - hw * 1.1, v - uDoorSize.y * 1.02);
+        float halo = exp(-max(e, 0.0) / 0.07) * step(-0.02, e) * (0.35 + 0.25 * glow) * breath;
+        over(color, tint, halo * 0.55 * uFps);
+        energy += halo * 0.6 * uFps;
+      } else if (face == 1 && plane < 0.0) {
+        float fromWall = 0.5 * uAspect - dr.x * h.x;
+        float along = abs(h.z - dr.y) - hw;
+        float spill = exp(-fromWall * 4.0) * smoothstep(0.18, -0.06, along) * (0.45 + 0.2 * glow) * breath;
+        over(color, tint, spill * 0.7 * uFps);
+        energy += spill * 0.55 * uFps;
+      }
+      continue;
+    }
     if (face == 0 && sign(plane) == dr.x) {
       float u = h.z - dr.y;
       float v = h.y + 0.5;
@@ -733,35 +776,35 @@ void paintDoors(inout vec4 color, inout float energy, vec3 h, int face, float pl
       float gap = open * hw;
       float leaf = inside * smoothstep(gap - px, gap + px, abs(u));
       float portal = inside - leaf;
-      over(color, vec3(0.012, 0.012, 0.018), 0.86 * leaf * uFps);
+      over(color, vec3(0.012, 0.012, 0.018), 0.86 * leaf * uFps * plain);
       // horizontal accent lines on the leaves
       float band = (1.0 - smoothstep(0.0015, 0.0015 + px, abs(v - uDoorSize.y * 0.56))) * leaf;
-      over(color, uScanColor, band * (0.25 + 0.5 * glow) * uFps);
+      over(color, tint, band * (0.25 + 0.5 * glow) * uFps * plain);
       // the seam between the leaves, and the handles either side of it
       float seam = (1.0 - smoothstep(0.0012, 0.0012 + px, abs(abs(u) - gap))) * inside * (1.0 - step(0.999, open));
       float handle = (1.0 - smoothstep(0.0025, 0.0025 + px, abs(abs(u) - gap - 0.022))) *
         (1.0 - smoothstep(0.035, 0.035 + px, abs(v - uDoorSize.y * 0.48))) * leaf;
-      over(color, mix(uLineColor, uScanColor, 0.5 + 0.5 * glow), max(seam * 0.8, handle * 0.9) * uFps);
+      over(color, mix(uLineColor, tint, 0.5 + 0.5 * glow), max(seam * 0.8, handle * 0.9) * uFps * plain);
       // light from the room beyond, brightest at the floor
-      vec3 beyond = mix(uScanColor, vec3(1.0), 0.35 + 0.35 * (1.0 - v / uDoorSize.y));
+      vec3 beyond = mix(tint, vec3(1.0), 0.35 + 0.35 * (1.0 - v / uDoorSize.y));
       over(color, beyond, portal * 0.92 * uFps);
       // frame: a crisp outer line plus a softer inner one
       float outer = 1.0 - smoothstep(0.002, 0.002 + px * 1.5, abs(e));
       float inner = 1.0 - smoothstep(0.0015, 0.0015 + px * 1.5, abs(e + 0.012));
       float frame = max(outer, inner * 0.55);
       float lit = 0.45 + 0.55 * max(glow, open);
-      over(color, uScanColor, frame * lit * uFps);
+      over(color, tint, frame * lit * uFps * plain);
       // status light above the door
       float lamp = (1.0 - smoothstep(0.045, 0.045 + px, abs(u))) * (1.0 - smoothstep(0.004, 0.004 + px, abs(v - uDoorSize.y - 0.03)));
-      over(color, mix(uScanColor, vec3(1.0), glow * 0.6), lamp * (0.35 + 0.65 * max(glow, open)) * uFps);
-      energy += (frame * (0.15 + 0.6 * glow) + portal * 0.9 + lamp * 0.6 * max(glow, open)) * uFps;
+      over(color, mix(tint, vec3(1.0), glow * 0.6), lamp * (0.35 + 0.65 * max(glow, open)) * uFps * plain);
+      energy += ((frame * (0.15 + 0.6 * glow) + lamp * 0.6 * max(glow, open)) * plain + portal * 0.9) * uFps;
     } else if (face == 1 && plane < 0.0 && (open > 0.0 || glow > 0.0)) {
       // light spilling onto the floor in front of the door
       float fromWall = 0.5 * uAspect - dr.x * h.x;
       float along = abs(h.z - dr.y) - hw * mix(0.6, 1.0, open);
       float spill = exp(-fromWall * 5.0) * smoothstep(0.12, -0.04, along);
       float amount = spill * (open * 0.55 + glow * 0.12) * uFps;
-      over(color, uScanColor, amount);
+      over(color, tint, amount);
       energy += amount * 0.5;
     }
   }
@@ -776,6 +819,24 @@ void mainFree() {
   float plane;
   vec3 h;
   traceScene(o, d, face, plane, h);
+  // the mirror: a thin frame on the back wall, and the room bounced off the glass inside it
+  float glass = 0.0;
+  float frame = 0.0;
+  if (uMirror.w > 0.0 && face == 2 && abs(plane - uDepth) < 1e-4) {
+    float edge = max(abs(h.x - uMirror.x) - uMirror.z, max(uMirror.y - h.y, h.y - uMirror.y - uMirror.w));
+    if (edge < 0.0) {
+      glass = 1.0;
+      o = h - d * 1e-4;
+      d.z = -d.z;
+      ox += dx * ((uDepth - ox.z) / dx.z);
+      dx.z = -dx.z;
+      oy += dy * ((uDepth - oy.z) / dy.z);
+      dy.z = -dy.z;
+      traceScene(o, d, face, plane, h);
+    } else if (edge < 0.012) {
+      frame = 1.0 - edge / 0.012;
+    }
+  }
   // past the doorway is the 3D hall's own layer; if that layer is ever off for a frame, show the
   // hall's dark rather than anything of this shader's
   if (uTrain > 0.5 && h.z < uFront - 1e-3) {
@@ -869,6 +930,20 @@ void mainFree() {
   paintRange(color, energy, h, face, plane, foot);
   if (uDoorCount > 0) paintDoors(color, energy, h, face, plane, foot);
   if (uImpactCount > 0) paintImpacts(color, energy, h, foot);
+  if (glass > 0.0) {
+    // a little darker and cooler than the room, with a faint diagonal sheen
+    color.rgb *= 0.86;
+    vec3 g0 = o;
+    float sheen = smoothstep(0.0, 0.5, sin((g0.x + g0.y) * 7.0 + 1.2) * 0.5 + 0.5);
+    over(color, vec3(0.78, 0.86, 1.0), 0.03 + sheen * 0.035);
+    energy *= 0.8;
+  }
+  if (frame > 0.0) {
+    over(color, vec3(0.045, 0.047, 0.055), 0.97);
+    float lip = smoothstep(0.55, 1.0, frame);
+    over(color, uScanColor, lip * 0.55);
+    energy += lip * 0.35;
+  }
 
   if (uHaze > 0.0 && uScanAlpha > 0.0 && uScanZ > uFront && abs(d.z) > 1e-5) {
     float ts = (uScanZ - o.z) / d.z;
@@ -1072,6 +1147,7 @@ export const GridScan = ({
   modelsPath = MODELS_URL,
   enableGyro = false,
   intro = true,
+  hold = false,
   lightMode = false,
   dpr,
   onEye,
@@ -1125,6 +1201,7 @@ export const GridScan = ({
     clickEffect,
     enableGyro,
     intro,
+    hold,
     lightMode,
     dpr,
     fps,
@@ -1260,6 +1337,7 @@ export const GridScan = ({
       rot: new Float32Array(9)
     };
     const doorData = new Float32Array(MAX_DOORS * 4);
+    const doorTint = new Float32Array(MAX_DOORS * 4);
     const doorOpen = new Float32Array(MAX_DOORS);
     const doorGlow = new Float32Array(MAX_DOORS);
     let aimDoor = -1;
@@ -1384,6 +1462,8 @@ export const GridScan = ({
         doorOpen[i] += (openTo - doorOpen[i]) * (1 - Math.exp(-dt * (openTo ? 5 : 7)));
         doorGlow[i] += ((aimDoor === i ? 1 : 0) - doorGlow[i]) * (1 - Math.exp(-dt * 10));
         doorData.set([door.side, door.z, doorOpen[i], doorGlow[i]], i * 4);
+        const tint = door.color ? parse(door.color) : parse(s.scanColor);
+        doorTint.set([tint[0], tint[1], tint[2], door.portal ? 1 : door.dressed ? 2 : 0], i * 4);
       }
     };
 
@@ -1465,22 +1545,27 @@ export const GridScan = ({
       }
 
       // body: gravity, floor, ceiling and walls
+      const wasZ = player.z;
       player.x += player.vx * dt;
       player.z += player.vz * dt;
+      if (trainOpen()) {
+        // the shared wall has a doorway. Which side you were on decides which wall stops you;
+        // only someone already lined up with the opening may pass into the wall's thickness
+        // (and is then kept inside the opening). Anyone else just stops at the wall.
+        const gapX = TRAIN_GAP_HALF - FPS_RADIUS * 0.6;
+        const wasMain = wasZ >= TRAIN_FRONT;
+        const inBand = (z: number) => Math.abs(z - TRAIN_FRONT) < FPS_RADIUS - 1e-4;
+        const lined = Math.abs(player.x) <= gapX;
+        if (inBand(player.z) || (wasMain ? player.z < TRAIN_FRONT : player.z >= TRAIN_FRONT)) {
+          if (lined || inBand(wasZ)) player.x = clamp(player.x, -gapX, gapX);
+          else player.z = wasMain ? Math.max(player.z, TRAIN_FRONT + FPS_RADIUS) : Math.min(player.z, TRAIN_FRONT - FPS_RADIUS);
+        }
+        player.z = clamp(player.z, RANGE.back + FPS_RADIUS, roomDepth - FPS_RADIUS);
+      }
       const inHall = trainOpen() && player.z < TRAIN_FRONT;
       const wallX = (inHall ? RANGE.halfW : 0.5 * aspect) - FPS_RADIUS;
       player.x = clamp(player.x, -wallX, wallX);
-      if (trainOpen()) {
-        // the shared wall has a doorway: inside its thickness you are held to the opening
-        const gapX = TRAIN_GAP_HALF - FPS_RADIUS * 0.6;
-        if (Math.abs(player.z - TRAIN_FRONT) < FPS_RADIUS) player.x = clamp(player.x, -gapX, gapX);
-        const through = Math.abs(player.x) <= gapX;
-        if (player.z >= TRAIN_FRONT) {
-          player.z = clamp(player.z, through ? RANGE.back + FPS_RADIUS : TRAIN_FRONT + FPS_RADIUS, roomDepth - FPS_RADIUS);
-        } else {
-          player.z = clamp(player.z, RANGE.back + FPS_RADIUS, through ? roomDepth - FPS_RADIUS : TRAIN_FRONT - FPS_RADIUS);
-        }
-      } else if (player.active || player.blend <= 0) {
+      if (!trainOpen() && (player.active || player.blend <= 0)) {
         player.z = clamp(player.z, FPS_FRONT + FPS_RADIUS, roomDepth - FPS_RADIUS);
       }
       // the boxes in the training hall: walk up steps, stand on platforms, bump into the rest
@@ -1738,6 +1823,7 @@ export const GridScan = ({
       gl.uniform2f(ru.uShift, view3d.shift[0], view3d.shift[1]);
       gl.uniform1f(ru.uFront, FPS_FRONT);
       gl.uniform4fv(ru.uDoors, doorData);
+      gl.uniform4fv(ru.uDoorTint, doorTint);
       gl.uniform1i(ru.uDoorCount, Math.min(s.doors.length, MAX_DOORS));
       gl.uniform2f(ru.uDoorSize, DOOR_W, DOOR_H);
       gl.uniform1f(ru.uLights, roomLights);
@@ -1745,6 +1831,7 @@ export const GridScan = ({
       gl.uniform1f(ru.uTrainBack, TRAIN_BACK);
       gl.uniform2f(ru.uGap, TRAIN_GAP_HALF, TRAIN_GAP_H);
       gl.uniform3f(ru.uAccent, 1, 0.58, 0.24);
+      gl.uniform4f(ru.uMirror, MIRROR.x, MIRROR.bottom, MIRROR.halfW, player.active ? MIRROR.height : 0);
       for (let i = 0; i < MAX_IMPACTS; i++) {
         const im = impacts[i];
         if (im) impactData.set([im.x, im.y, im.z, im.age], i * 4);
@@ -1794,6 +1881,10 @@ export const GridScan = ({
       raf = 0;
       if (!visible || document.hidden) return;
       const s = settingsRef.current;
+      if (s.hold && drawnOnce) {
+        last = 0; // the intro starts fresh once the hold lifts
+        return;
+      }
       const dt = last ? clamp((now - last) / 1000, 0.001, 0.05) : 1 / 60;
       last = now;
       time += dt;
@@ -1822,7 +1913,10 @@ export const GridScan = ({
         room: camPos.z < TRAIN_FRONT && trainOpen() ? 1 : 0,
         trainOpen: trainOpen(),
         turnRate: [turn[0], turn[1]],
-        aspect: view.width / view.height
+        aspect: view.width / view.height,
+        depth: roomDepth,
+        body: { x: player.x, y: player.y - FPS_EYE, z: player.z, yaw: player.yaw, pitch: player.pitch, vy: player.vy },
+        fps: player.active
       });
       if (onEyeRef.current && s.parallax > 0) {
         const range = 0.22 * s.parallax;
@@ -1860,7 +1954,7 @@ export const GridScan = ({
         pingAlpha[i] = Math.min(1, ping.age / 0.05) * (1 - k) * (1 - k);
       }
 
-      draw();
+      if (mainVisible || !drawnOnce) draw();
       if (!drawnOnce) {
         drawnOnce = true;
         attemptRef.current = 0; // healthy: reset the retry budget
@@ -1899,6 +1993,7 @@ export const GridScan = ({
     };
 
     // mouse look: pointer lock when we have it, otherwise drag to look
+    let mainVisible = true;
     let lookAvg = 0;
     let lookAt = 0;
     let lookSkipped = false;
@@ -2104,6 +2199,10 @@ export const GridScan = ({
       setZoom: z => {
         zoomTarget = clamp(z, 0.3, 1);
         wake();
+      },
+      setMainVisible: on => {
+        if (on && !mainVisible) wake();
+        mainVisible = on;
       }
     };
     if (controlRefRef.current) controlRefRef.current.current = control;

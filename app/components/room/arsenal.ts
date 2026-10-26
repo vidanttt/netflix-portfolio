@@ -26,6 +26,8 @@ export type ArsenalState = {
   hit: { seq: number; kind: 'hit' | 'head' | 'kill' };
   stats: RangeStats;
   bloom: number;
+  /** aiming down sights (the crosshair hides) */
+  ads: boolean;
 };
 
 type Hooks = {
@@ -68,6 +70,7 @@ export class Arsenal {
       hit: { seq: 0, kind: 'hit' },
       stats: { ...this.stats },
       bloom: 0,
+      ads: false,
     };
   }
 
@@ -186,6 +189,7 @@ export class Arsenal {
     const aiming = this.alt && !!w.ads && !this.state.reloading;
     this.view?.setAds(aiming);
     this.control?.setZoom(aiming ? (w.ads ?? 1) : 1);
+    if (aiming !== this.state.ads) this.emit({ ads: aiming });
   }
 
   inspect() {
@@ -209,7 +213,7 @@ export class Arsenal {
     this.view?.setAds(false);
     this.control?.setZoom(1);
     this.view?.reload(dur, empty, this.reloadShells);
-    this.emit({ reloading: true, reloadDur: dur });
+    this.emit({ reloading: true, reloadDur: dur, ads: false });
   }
 
   private cancelReload() {
@@ -283,17 +287,20 @@ export class Arsenal {
     playShot(w.sound);
     this.stats.shots += 1;
     const aiming = this.alt;
+    // the shot goes where the crosshair is now; the recoil only moves the view afterwards
+    const aim = this.control?.aim();
+    const moving = Math.min(1, this.motion.speed / 0.75);
+    // first-shot accuracy: standing still after a pause, the first round goes dead centre
+    // (a shotgun keeps its pattern)
+    const settled = this.spray < 0.05 && moving < 0.1 && this.motion.grounded && (w.pellets ?? 1) === 1;
+    const spread =
+      ((settled ? 0 : (w.spread ?? 0)) + (w.moveSpread ?? 0) * moving + (this.motion.grounded ? 0 : 0.035) + this.spray * (w.auto ? 0.006 : 0.002)) *
+      (aiming ? 0.45 : 1);
     const climb = (w.recoil ?? 0) * (aiming ? 0.7 : 1) * (1 + this.spray * 0.5);
     const side = (Math.random() - 0.5) * 2 * (w.recoilSide ?? 0) * (1 + this.spray);
     this.control?.kick(climb, side);
     this.spray = Math.min(3, this.spray + (w.auto ? 0.35 : 0.6));
-
-    const aim = this.control?.aim();
     if (!aim) return;
-    const moving = Math.min(1, this.motion.speed / 0.75);
-    const spread =
-      ((w.spread ?? 0) + (w.moveSpread ?? 0) * moving + (this.motion.grounded ? 0 : 0.035) + this.spray * (w.auto ? 0.006 : 0.002)) *
-      (aiming ? 0.45 : 1);
     let anyHit = false;
     const hitBots = new Set<number>();
     for (let i = 0; i < (w.pellets ?? 1); i++) {

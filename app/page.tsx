@@ -10,11 +10,15 @@ import GridScan, { lockPointer, TRAIN_FRONT, TRAIN_GAP_H, TRAIN_GAP_HALF } from 
 import WeaponView, { type WeaponViewApi } from './components/room/WeaponView';
 import Hotbar from './components/room/Hotbar';
 import RangeWorld, { type RangeWorldApi } from './components/room/RangeWorld';
+import MirrorLayer, { type MirrorApi } from './components/room/MirrorLayer';
+import DoorsLayer, { type DoorsApi } from './components/room/DoorsLayer';
+import PortalWarp from './components/room/PortalWarp';
+import { playPortalEnter, setPortalHum } from '@/lib/roomAudio';
 import { Arsenal, type WorldHit } from './components/room/arsenal';
 import { WEAPONS, weaponById } from './components/room/weapons';
 import { doorwayPolygon, polygonCss, screenCtx } from './components/room/place';
 import { ROOM_DOORS, DOOR_HEIGHT, doorLayout } from './roomDoors';
-import RoomTablet, { DEFAULT_ROOM_SETTINGS, ROOM_THEMES, RoomMusicConsole, type RoomSettings } from './components/RoomTablet';
+import RoomTablet, { DEFAULT_ROOM_SETTINGS, ROOM_THEMES, RoomMusicConsole, type RoomSettings, CrosshairMark } from './components/RoomTablet';
 import {
   playClick,
   playDoor,
@@ -114,8 +118,39 @@ const RoomGrid = memo(function RoomGrid({
   return <GridScan linesColor={colors.lines} scanColor={colors.scan} {...props} />;
 });
 
+/** how close (room units) to the doorway you have to be to see into the other room */
+const ROOM_LOOK_RANGE = 1.1;
+
+/** '#rrggbb' -> 'r, g, b' (for rgba() in CSS) */
+const hexRgb = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+};
+
+/** a screen polygon's bounding rectangle, clamped to the viewport; null when it's off screen */
+const doorRect = (poly: [number, number][], W: number, H: number) => {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const [x, y] of poly) {
+    x0 = Math.min(x0, x);
+    y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x);
+    y1 = Math.max(y1, y);
+  }
+  x0 = Math.max(0, Math.floor(x0) - 2);
+  y0 = Math.max(0, Math.floor(y0) - 2);
+  x1 = Math.min(W, Math.ceil(x1) + 2);
+  y1 = Math.min(H, Math.ceil(y1) + 2);
+  return x1 > x0 && y1 > y0 ? [x0, y0, x1 - x0, y1 - y0] : null;
+};
+
 export default function Home() {
-  const [showLoader, setShowLoader] = useState(false);
+  // the opening title: 'pending' until we know whether this visit has seen it (the page is
+  // already rendering underneath, covered), then 'show' or 'done'
+  const [loader, setLoader] = useState<'pending' | 'show' | 'done'>('pending');
+  const showLoader = loader !== 'done';
   const router = useRouter();
   const { startTransition } = usePageTransition();
 
@@ -165,6 +200,10 @@ export default function Home() {
   // the tablet (Tab in first person) and the settings it edits, kept between visits
   const [tabletOpen, setTabletOpen] = useState(false);
   const [roomSettings, setRoomSettings] = useState<RoomSettings>(DEFAULT_ROOM_SETTINGS);
+  const lightsOn = useRef(true);
+  lightsOn.current = roomSettings.lights;
+  const characterRef = useRef(DEFAULT_ROOM_SETTINGS.character);
+  characterRef.current = roomSettings.character;
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('room-settings') || 'null');
@@ -194,6 +233,24 @@ export default function Home() {
   const controlRef = useRef<RoomControl | null>(null);
   const weaponApi = useRef<WeaponViewApi | null>(null);
   const worldRef = useRef<RangeWorldApi | null>(null);
+  const mirrorRef = useRef<MirrorApi | null>(null);
+  // how much of each room is being drawn from the other one (0 = not at all, see ROOM_LOOK_RANGE)
+  const mainSeen = useRef(1);
+  const hallSeen = useRef(0);
+  const doorsRef = useRef<DoorsApi | null>(null);
+  // the nether portal: where it's taking you (null when you're not in it); `portalArmed` stays
+  // false after stepping back out until you've walked away from it
+  const [portalWarp, setPortalWarp] = useState<{ door: number; href: string } | null>(null);
+  const portalArmed = useRef(true);
+  const openDoorRef = useRef(-1);
+  // the training hall isn't built with the page: only once first person has settled in (or the
+  // moment you walk through the doorway)
+  const [hallReady, setHallReady] = useState(false);
+  const hallWanted = useRef(false);
+  const wantHall = useCallback(() => {
+    hallWanted.current = true;
+    setHallReady(true);
+  }, []);
   const arsenal = useMemo(() => new Arsenal(), []);
   const benchAim = useRef<string | null>(null);
   const lastCamTime = useRef(0);
@@ -366,12 +423,28 @@ export default function Home() {
       const p = cam.pos;
       const inDoorway =
         !door && p[2] - TRAIN_FRONT < 0.04 && Math.abs(p[0]) < TRAIN_GAP_HALF && p[1] + 0.5 < TRAIN_GAP_H;
+      // each room is only drawn while you're in it, or near enough the doorway to look through:
+      // further away the opening fades to a dark veil and the other room isn't drawn at all
+      const fromDoor = Math.abs(p[2] - TRAIN_FRONT);
+      const near = fromDoor < ROOM_LOOK_RANGE ? 1 : 0;
+      const k = 1 - Math.exp(-dt * 6);
       if (cam.room === 1 || inDoorway) {
-        stage.style.clipPath = polygonCss(door, box.left, box.top);
-        world?.update(cam, dt, { visible: true, clip: null, above: true });
+        mainSeen.current += (near - mainSeen.current) * k;
+        hallSeen.current = 1;
+        const seen = mainSeen.current > 0.01;
+        stage.style.clipPath = polygonCss(seen ? door : null, box.left, box.top);
+        world?.update(cam, dt, { visible: true, clip: null, above: true, sealed: 1 - mainSeen.current, fade: 1 });
+        // the main room skips drawing whenever none of it can show
+        controlRef.current?.setMainVisible(seen && (!!door || inDoorway));
+        // first steps through the doorway before the hall was built: build it now
+        if (!hallWanted.current) wantHall();
       } else {
+        hallSeen.current += (near - hallSeen.current) * k;
+        mainSeen.current = 1;
         stage.style.clipPath = '';
-        world?.update(cam, dt, { visible: !!door, clip: polygonCss(door), above: false });
+        const rect = door && hallSeen.current > 0.01 ? doorRect(door, W, H) : null;
+        world?.update(cam, dt, { visible: !!rect, clip: polygonCss(door), above: false, rect, fade: hallSeen.current });
+        controlRef.current?.setMainVisible(true);
       }
       if (rangeSignRef.current) {
         place(rangeSignRef.current, [0, -0.5 + TRAIN_GAP_H + 0.1, TRAIN_FRONT + 0.003], [-1, 0, 0], [0, -1, 0], [0, 0, 1], 0.0011 * H, cam.blend);
@@ -382,28 +455,59 @@ export default function Home() {
       if (rangeSignRef.current) rangeSignRef.current.style.visibility = 'hidden';
     }
 
-    // things to play with: the music console and the light switch by the entrance, and three
-    // stat holograms near the back wall that turn slowly in the air
+    // the doors' frames, particles and the portal (seen from the hall only through the doorway)
+    {
+      let clip: string | null = null;
+      let show = cam.fps && cam.blend > 0.6;
+      if (cam.room === 1) {
+        const door = doorwayPolygon(ctx, TRAIN_FRONT, TRAIN_GAP_HALF, TRAIN_GAP_H);
+        show = show && !!door && mainSeen.current > 0.01;
+        clip = polygonCss(door);
+      }
+      doorsRef.current?.update(cam, dt, {
+        doors: doorSpots,
+        aim: cam.aimDoor,
+        open: openDoorRef.current,
+        lights: lightsOn.current,
+        visible: show,
+        clip,
+      });
+      // the portal hums louder as you get close, and walking into it takes you through
+      let hum = 0;
+      const b = cam.body;
+      doorSpots.forEach((spot, i) => {
+        if (!spot.portal) return;
+        const wall = spot.side * half - b.x;
+        const near = Math.hypot(spot.side * half - b.x, spot.z - b.z);
+        hum = Math.max(hum, cam.fps && cam.room === 0 ? 1 - Math.min(1, Math.max(0, near - 0.15) / 1.3) : 0);
+        const touching = Math.abs(wall) < 0.135 && Math.abs(b.z - spot.z) < 0.13;
+        if (!touching && near > 0.32) portalArmed.current = true;
+        if (touching && portalArmed.current && cam.fps && cam.blend > 0.95 && cam.room === 0 && openDoorRef.current < 0) {
+          portalArmed.current = false;
+          enterPortal.current(i);
+        }
+      });
+      setPortalHum(hum);
+    }
+
+    // things to play with: the music console and the light switch by the entrance
     const items = itemRefs.current;
     const wall = half - 0.004;
     if (items.music) place(items.music, [-wall, 0.02, -0.38], [0, 0, 1], [0, -1, 0], [1, 0, 0], 0.0011 * H, cam.blend);
     if (items.lights) place(items.lights, [wall, 0.0, -0.38], [0, 0, -1], [0, -1, 0], [-1, 0, 0], 0.0011 * H, cam.blend);
-    ['stat0', 'stat1', 'stat2'].forEach((key, i) => {
-      const el = items[key];
-      if (!el) return;
-      const a = Math.sin(cam.time * 0.5 + i * 2.1) * 0.35;
-      const x = Math.max(-half + 0.2, Math.min(half - 0.2, (i - 1) * 0.46));
-      const y = 0.02 + Math.sin(cam.time * 0.8 + i) * 0.015;
-      place(el, [x, y, 2.5], [Math.cos(a), 0, -Math.sin(a)], [0, -1, 0], [-Math.sin(a), 0, -Math.cos(a)], 0.0012 * H, cam.blend);
-    });
+    // you, in the mirror on the back wall
+    const held = arsenal.weapon;
+    mirrorRef.current?.update(cam, dt, { weapon: held.kind === 'hand' ? null : held.id, lights: lightsOn.current, character: characterRef.current });
 
     // aim: whatever sits under the crosshair behaves as if hovered
     let label = '';
+    const wasAimed = benchAim.current;
     benchAim.current = null;
     if (cam.blend > 0.9 && cam.room === 1 && world && controlRef.current) {
       const aim = controlRef.current.aim();
       const id = world.aimItem(aim.o, aim.d);
-      if (id !== benchAim.current && id) playClick(1.3);
+      // one soft tick when the crosshair moves onto a different weapon, not one every frame
+      if (id && id !== wasAimed) playClick(1.3);
       benchAim.current = id;
       if (id) label = `E  ·  Pick up ${weaponById(id).name}`;
     }
@@ -414,7 +518,8 @@ export default function Home() {
       setAim(target);
       if (target?.dataset.label) label = target.dataset.label;
       else if (target) label = target.dataset.profileId ? `Open ${target.dataset.profileId}` : 'Are you bored?';
-      else if (cam.aimDoor >= 0) label = `Enter · ${ROOM_DOORS[cam.aimDoor]?.title ?? ''}`;
+      else if (cam.aimDoor >= 0)
+        label = ROOM_DOORS[cam.aimDoor]?.theme === 'portal' ? 'Walk into the portal' : `Enter · ${ROOM_DOORS[cam.aimDoor]?.title ?? ''}`;
     } else {
       setAim(null);
     }
@@ -480,6 +585,13 @@ export default function Home() {
   useEffect(() => {
     weaponApi.current?.setTint(theme.scan);
   }, [theme.scan]);
+  // build the hall once the move into first person has finished (so it can't stall it)
+  useEffect(() => {
+    if (!fps || hallWanted.current) return undefined;
+    const idle = window.setTimeout(wantHall, 1400);
+    return () => window.clearTimeout(idle);
+  }, [fps, wantHall]);
+
   useEffect(() => {
     const on = fps && !tabletOpen && openDoor < 0;
     arsenal.setEnabled(on);
@@ -536,6 +648,32 @@ export default function Home() {
       arsenal.setAlt(false);
     };
   }, [fps, openDoor, tabletOpen, arsenal]);
+
+  openDoorRef.current = openDoor;
+  // walking into (or clicking) the nether portal: the room pauses, the warp plays, then you're
+  // taken to the link (or, with none yet, told so and let back out)
+  const enterPortal = useRef<(i: number) => void>(() => {});
+  enterPortal.current = (i: number) => {
+    playPortalEnter();
+    setOpenDoor(i);
+    window.setTimeout(() => {
+      if (document.pointerLockElement) document.exitPointerLock();
+    }, 30);
+    setPortalWarp({ door: i, href: ROOM_DOORS[i]?.href ?? '' });
+  };
+  const goThroughPortal = (href: string) => {
+    setPortalHum(0);
+    if (href.startsWith('/')) {
+      startTransition();
+      router.push(href);
+    } else window.location.href = href;
+  };
+  const leavePortal = () => {
+    setPortalWarp(null);
+    setOpenDoor(-1);
+    lockPointer(roomCanvas());
+  };
+  useEffect(() => () => setPortalHum(0), []);
 
   const enterDoor = useCallback((i: number) => {
     setOpenDoor(i);
@@ -605,6 +743,11 @@ export default function Home() {
         return;
       }
       if (aimDoor.current >= 0) {
+        if (ROOM_DOORS[aimDoor.current]?.theme === 'portal') {
+          portalArmed.current = false;
+          enterPortal.current(aimDoor.current);
+          return;
+        }
         playDoor(true);
         enterDoor(aimDoor.current);
       }
@@ -732,10 +875,7 @@ export default function Home() {
 
   // Check if this is the first visit in this session
   useEffect(() => {
-    const hasSeenLoader = sessionStorage.getItem('netflixLoaderSeen');
-    if (!hasSeenLoader) {
-      setShowLoader(true);
-    }
+    setLoader(sessionStorage.getItem('netflixLoaderSeen') ? 'done' : 'show');
 
     // Add secret key combination to reset loader (Ctrl+Shift+R)
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -750,8 +890,9 @@ export default function Home() {
   }, []);
 
   const handleLoaderComplete = () => {
-    setShowLoader(false);
+    setLoader('done');
     sessionStorage.setItem('netflixLoaderSeen', 'true');
+    document.documentElement.setAttribute('data-intro-seen', '');
   };
 
   const handleProfileSelect = (profile: Profile) => {
@@ -778,11 +919,6 @@ export default function Home() {
       } else if (item.startsWith('music-')) {
         playClick(1);
         window.dispatchEvent(new CustomEvent('music:command', { detail: { action: item.slice(6) } }));
-      } else if (item === 'stat') {
-        playClick(1.2);
-        el?.classList.remove('is-popped');
-        void el?.offsetWidth; // restart the pop
-        el?.classList.add('is-popped');
       }
     },
     profile: (id) => {
@@ -795,15 +931,17 @@ export default function Home() {
   // Function to reset loader state (for testing purposes)
   const resetLoaderState = () => {
     sessionStorage.removeItem('netflixLoaderSeen');
-    setShowLoader(true);
+    document.documentElement.removeAttribute('data-intro-seen');
+    setLoader('show');
   };
 
-  // Show Netflix loader on first load
-  if (showLoader) {
-    return <NetflixLoader onComplete={handleLoaderComplete} />;
-  }
-
   return (
+    <>
+    {/* the opening title plays over the page, which loads underneath in the meantime; before
+        we know whether to play it, a black cover keeps the room from peeking through (a script
+        in the layout hides that cover at once for visits that have already seen it) */}
+    {loader === 'pending' && <div className="intro-cover" aria-hidden="true" />}
+    {loader === 'show' && <NetflixLoader onComplete={handleLoaderComplete} />}
     <div
       className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden"
       style={{ backgroundColor: '#141414' }}
@@ -822,6 +960,7 @@ export default function Home() {
           controlRef={controlRef}
           cells={8}
           depth={3}
+          hold={showLoader}
           scanDuration={2.4}
           scanDelay={1.6}
           clickEffect="ping"
@@ -865,7 +1004,9 @@ export default function Home() {
 
       {/* first-person HUD */}
       <div ref={hudRef} className={`room-hud${tabletOpen ? ' is-tablet' : ''}`} aria-hidden={!fps}>
-        <div className="room-crosshair" />
+        <div className="room-crosshair">
+          <CrosshairMark kind={roomSettings.crosshair} color={roomSettings.crosshairColor} />
+        </div>
         <div ref={promptRef} className="room-prompt" />
         <div className="room-resume">Click to look around</div>
         <div className="room-keys">
@@ -882,9 +1023,18 @@ export default function Home() {
         </div>
       </div>
 
-      <WeaponView apiRef={weaponApi} visible={fps} />
+      <WeaponView apiRef={weaponApi} visible={fps} character={roomSettings.character} />
       <Hotbar arsenal={arsenal} visible={fps} inRange={inRange} />
-      <RangeWorld ref={worldRef} />
+      {hallReady && <RangeWorld ref={worldRef} />}
+      <DoorsLayer ref={doorsRef} />
+      {portalWarp && (
+        <PortalWarp
+          href={portalWarp.href}
+          onDone={() => goThroughPortal(portalWarp.href)}
+          onBack={leavePortal}
+        />
+      )}
+      <MirrorLayer ref={mirrorRef} />
 
       {fps && (
         <RoomTablet
@@ -967,7 +1117,8 @@ export default function Home() {
             ref={(el) => {
               signRefs.current[i] = el;
             }}
-            className="room-door-sign"
+            className={`room-door-sign room-door-sign--${door.theme}`}
+            style={{ ['--door' as string]: hexRgb(door.color) }}
             aria-hidden="true"
           >
             <span className="room-door-tag">{door.tag}</span>
@@ -990,25 +1141,6 @@ export default function Home() {
           <span className="room-switch-rocker"><i /></span>
           <span className="room-switch-state">{roomSettings.lights ? 'On' : 'Off'}</span>
         </div>
-        {[
-          ['1K+', 'projects delivered'],
-          ['1M+', 'total views'],
-          ['5+', 'years editing'],
-        ].map(([value, label], i) => (
-          <div
-            key={label}
-            ref={(el) => { itemRefs.current[`stat${i}`] = el; }}
-            className="room-item room-holo"
-            data-room-item="stat"
-            data-label={`${value} ${label}`}
-            aria-hidden="true"
-          >
-            <span className="room-holo-inner">
-              <strong>{value}</strong>
-              <span>{label}</span>
-            </span>
-          </div>
-        ))}
 
         {/* Who's watching heading */}
         <div ref={headingLayer} style={{ willChange: 'transform' }}>
@@ -1117,5 +1249,6 @@ export default function Home() {
         </div>
       </div>
     </div>
+    </>
   );
 }

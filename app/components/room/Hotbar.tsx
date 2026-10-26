@@ -190,6 +190,11 @@ export default function Hotbar({ arsenal, visible, inRange }: { arsenal: Arsenal
   useEffect(() => {
     document.documentElement.style.setProperty('--room-bloom', String(s.bloom));
   }, [s.bloom]);
+  // aiming down sights: the sights are the crosshair
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-room-ads', s.ads && visible);
+    return () => document.documentElement.removeAttribute('data-room-ads');
+  }, [s.ads, visible]);
 
   const st = s.stats;
   const acc = st.shots ? Math.round((st.hits / st.shots) * 100) : 0;

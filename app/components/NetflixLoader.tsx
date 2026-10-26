@@ -92,7 +92,7 @@ export default function NetflixLoader({ onComplete }: NetflixLoaderProps) {
   }, []);
 
   return (
-    <div ref={rootRef} className="fixed inset-0 z-50 overflow-hidden bg-black" aria-label="Loading" role="status">
+    <div ref={rootRef} className="fixed inset-0 z-[200] overflow-hidden bg-black" aria-label="Loading" role="status">
       {/* deep vignette */}
       <div
         className="pointer-events-none absolute inset-0"

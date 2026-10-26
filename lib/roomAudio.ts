@@ -280,3 +280,90 @@ export const playBotSpawn = () => {
   osc.start(t);
   osc.stop(t + 0.32);
 };
+
+/* ── the nether portal ─────────────────────────────────────────────── */
+let hum: { gain: GainNode; level: number } | null = null;
+
+/** noise through a slowly wandering band-pass and a flanger: the portal's breathy whoosh */
+const portalVoice = (c: AudioContext, out: AudioNode) => {
+  const src = c.createBufferSource();
+  src.buffer = noise;
+  src.loop = true;
+  const bp = c.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 480;
+  bp.Q.value = 3.2;
+  for (const [rate, depth] of [[0.21, 180], [0.37, 110]]) {
+    const lfo = c.createOscillator();
+    lfo.frequency.value = rate + Math.random() * 0.05;
+    const d = c.createGain();
+    d.gain.value = depth;
+    lfo.connect(d).connect(bp.frequency);
+    lfo.start();
+  }
+  // flanger: the dry sound plus a copy delayed by a few wobbling milliseconds
+  const dly = c.createDelay(0.02);
+  dly.delayTime.value = 0.005;
+  const sweep = c.createOscillator();
+  sweep.frequency.value = 0.16;
+  const sd = c.createGain();
+  sd.gain.value = 0.0035;
+  sweep.connect(sd).connect(dly.delayTime);
+  sweep.start();
+  const fb = c.createGain();
+  fb.gain.value = 0.55;
+  dly.connect(fb).connect(dly);
+  // a slow swell in and out
+  const trem = c.createGain();
+  trem.gain.value = 0.75;
+  const tl = c.createOscillator();
+  tl.frequency.value = 0.42;
+  const td = c.createGain();
+  td.gain.value = 0.25;
+  tl.connect(td).connect(trem.gain);
+  tl.start();
+  src.connect(bp);
+  bp.connect(trem);
+  bp.connect(dly).connect(trem);
+  trem.connect(out);
+  src.start();
+  return { src, bp };
+};
+
+/**
+ * The portal's ambience, quiet: `level` 0..1 follows how close you are. Built the first time
+ * it's needed and left running silently afterwards.
+ */
+export const setPortalHum = (level: number) => {
+  const c = audio();
+  if (!c || !master || !noise) return;
+  const want = muted ? 0 : Math.max(0, Math.min(1, level)) ** 1.5 * 0.05;
+  if (!hum) {
+    if (want <= 0.0005) return;
+    const gain = c.createGain();
+    gain.gain.value = 0;
+    gain.connect(master);
+    portalVoice(c, gain);
+    hum = { gain, level: 0 };
+  }
+  if (Math.abs(want - hum.level) < 0.001) return;
+  hum.level = want;
+  hum.gain.gain.setTargetAtTime(want, c.currentTime, 0.3);
+};
+
+/** Stepping into the portal: the whoosh swelling and rising over a couple of seconds, softly. */
+export const playPortalEnter = () => {
+  const c = audio();
+  if (!c || !master || !noise || muted || volume <= 0) return;
+  const t = c.currentTime;
+  const g = c.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.09, t + 1.4);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 3);
+  g.connect(master);
+  const { src, bp } = portalVoice(c, g);
+  bp.frequency.cancelScheduledValues(t);
+  bp.frequency.setValueAtTime(260, t);
+  bp.frequency.exponentialRampToValueAtTime(1400, t + 2.6);
+  src.stop(t + 3.1);
+};
