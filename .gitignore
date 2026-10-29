@@ -43,3 +43,6 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# raw CC0 sound downloads (the trimmed clips live in public/sounds)
+/_sound-sources/

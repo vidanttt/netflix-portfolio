@@ -55,7 +55,42 @@ type Model = {
   kickBack: number;
   kickUp: number;
   brass: 'pistol' | 'rifle' | 'shell' | 'none';
+  /** where the support hand takes hold during a reload (see reloadAnchors) */
+  hands?: { mag?: THREE.Object3D; rack?: THREE.Object3D; cyl?: THREE.Object3D; shell?: THREE.Object3D };
 };
+
+/**
+ * Anchors for the support hand's reload work, in the grip anchors' convention (y along the
+ * thing held, -z forward, the left palm facing +x): under the magazine palm up, over the slide
+ * or bolt palm down, beside the revolver's cylinder, under the next shotgun shell.
+ */
+function reloadAnchors(m: Model) {
+  if (m.hands) return m.hands;
+  m.root.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  const under = (part: THREE.Object3D, rot: number, pick: (b: THREE.Box3) => THREE.Vector3, yaw = 0) => {
+    box.setFromObject(part);
+    const a = new THREE.Object3D();
+    a.position.copy(part.worldToLocal(pick(box)));
+    a.rotation.set(0, yaw, rot, 'YXZ');
+    part.add(a);
+    return a;
+  };
+  const p = m.parts;
+  const hands: NonNullable<Model['hands']> = {};
+  // a pistol's short magazine by its floor plate (palm up); a long one by its front, halfway
+  // down (palm back), so the hand stays in view
+  if (p.mag && m.kind === 'pistol') hands.mag = under(p.mag, Math.PI / 2, (b) => new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y + 0.01, (b.min.z + b.max.z) / 2));
+  else if (p.mag) hands.mag = under(p.mag, 0, (b) => new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y - (b.max.y - b.min.y) * 0.4, b.min.z - 0.008), -Math.PI / 2);
+  // palm down over the back of the slide / the bolt
+  const rack = p.slide ?? p.bolt;
+  if (rack) hands.rack = under(rack, -Math.PI / 2, (b) => new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y + 0.004, b.max.z - 0.02));
+  // the left side of the revolver's cylinder (it travels with the rounds)
+  if (p.chambers) hands.cyl = under(p.chambers, 0, (b) => new THREE.Vector3(b.min.x - 0.004, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2 + 0.01));
+  if (p.shell) hands.shell = under(p.shell, Math.PI / 2, (b) => new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2 + 0.01));
+  m.hands = hands;
+  return hands;
+}
 
 /* ── materials ──────────────────────────────────────────────────────── */
 const mat = {
@@ -806,6 +841,15 @@ export default function WeaponView({
     let pumpT = 9;
     let flashT = 9;
     let reload: { t: number; dur: number; empty: boolean; shells: number; fired: Set<string> } | null = null;
+    // the support hand during a reload: blended from its grip towards `handTo` by `handW`
+    let handTo: THREE.Object3D | null = null;
+    let handW = 0;
+    const handAt = new THREE.Object3D();
+    scene.add(handAt);
+    const _ha = new THREE.Vector3();
+    const _hb = new THREE.Vector3();
+    const _qa = new THREE.Quaternion();
+    const _qb = new THREE.Quaternion();
     let inspect: { t: number; dur: number } | null = null;
     let melee: { t: number; dur: number; heavy: boolean } | null = null;
 
@@ -1072,16 +1116,33 @@ export default function WeaponView({
         }
 
         // reload choreography
+        handTo = null;
+        handW = 0;
         if (reload) {
           const u = reload.t / reload.dur;
           const f = reload.fired;
+          const hands = reloadAnchors(m);
+          // the support hand: off the grip to the magazine (it carries the old one away and
+          // brings the new one in), then up to rack the slide or bolt on an empty reload
+          const magHand = (a: number, b: number, c: number, d: number) => {
+            const w = kf(u, [[a, 0], [b, 1], [c, 1], [d, 0]]);
+            if (hands.mag && w > handW) [handTo, handW] = [hands.mag, w];
+          };
+          const rackHand = (a: number, b: number, c: number, d: number) => {
+            const w = reload!.empty ? kf(u, [[a, 0], [b, 1], [c, 1], [d, 0]]) : 0;
+            if (hands.rack && w > handW) [handTo, handW] = [hands.rack, w];
+          };
           if (m.kind === 'pistol') {
+            magHand(0.08, 0.16, 0.62, 0.7);
+            rackHand(0.7, 0.76, 0.84, 0.92);
             rot.x += kf(u, [[0, 0], [0.12, 0.3], [0.78, 0.3], [0.92, 0]]);
             rot.z += kf(u, [[0, 0], [0.12, -0.5], [0.78, -0.5], [0.92, 0]]);
             pos.x += kf(u, [[0, 0], [0.12, -0.04], [0.78, -0.04], [0.92, 0]]);
             if (parts.mag) {
-              parts.mag.position.y = kf(u, [[0.14, 0], [0.32, -0.32], [0.42, -0.32], [0.43, -0.24], [0.62, 0]]);
-              parts.mag.visible = u < 0.32 || u > 0.43;
+              // out a hand's length (still in view), swapped for a fresh one below, pushed home
+              parts.mag.position.y = kf(u, [[0.14, 0], [0.3, -0.16], [0.36, -0.26], [0.42, -0.26], [0.47, -0.14], [0.62, 0]]);
+              parts.mag.visible = u < 0.36 || u > 0.42;
+              pos.y += kf(u, [[0, 0], [0.12, 0.025], [0.78, 0.025], [0.92, 0]]);
             }
             cue('out', 0.16, u, f, 'magOut');
             cue('in', 0.62, u, f, 'magIn');
@@ -1090,6 +1151,9 @@ export default function WeaponView({
               cue('slide', 0.78, u, f, 'slide');
             }
           } else if (m.kind === 'revolver') {
+            // the hand cradles the cylinder: swings it out, punches the empties, loads, closes
+            const w = kf(u, [[0.1, 0], [0.2, 1], [0.8, 1], [0.9, 0]]);
+            if (hands.cyl) [handTo, handW] = [hands.cyl, w];
             rot.z += kf(u, [[0, 0], [0.12, 0.9], [0.84, 0.9], [0.95, 0]]);
             rot.x += kf(u, [[0, 0], [0.12, 0.15], [0.28, 0.75], [0.42, 0.75], [0.5, -0.25], [0.7, -0.25], [0.84, 0.15], [0.95, 0]]);
             pos.x += kf(u, [[0, 0], [0.12, -0.05], [0.84, -0.05], [0.95, 0]]);
@@ -1104,12 +1168,15 @@ export default function WeaponView({
             cue('load', 0.62, u, f, 'magIn');
             cue('close', 0.8, u, f, 'cylinder');
           } else if (m.kind === 'smg' || m.kind === 'rifle') {
+            magHand(0.1, 0.19, 0.6, 0.68);
+            rackHand(0.64, 0.71, 0.8, 0.88);
             rot.z += kf(u, [[0, 0], [0.12, -0.35], [0.82, -0.35], [0.94, 0]]);
             rot.x += kf(u, [[0, 0], [0.12, 0.12], [0.82, 0.12], [0.94, 0]]);
             if (parts.mag) {
               parts.mag.rotation.x = kf(u, [[0.12, 0], [0.2, 0.35], [0.42, 0.35], [0.6, 0]]);
-              parts.mag.position.y = kf(u, [[0.18, 0], [0.32, -0.3], [0.42, -0.3], [0.43, -0.22], [0.6, 0]]);
-              parts.mag.visible = u < 0.32 || u > 0.43;
+              parts.mag.position.y = kf(u, [[0.18, 0], [0.3, -0.15], [0.36, -0.26], [0.42, -0.26], [0.47, -0.13], [0.6, 0]]);
+              parts.mag.visible = u < 0.36 || u > 0.42;
+              pos.y += kf(u, [[0, 0], [0.12, 0.03], [0.82, 0.03], [0.94, 0]]);
             }
             if (parts.bolt && reload.empty) parts.bolt.position.z = kf(u, [[0.68, 0], [0.74, 0.06], [0.78, 0.06], [0.8, 0]]);
             cue('out', 0.2, u, f, 'magOut');
@@ -1126,6 +1193,8 @@ export default function WeaponView({
             const k = (u - lead) / per;
             if (k >= 0 && k < reload.shells && parts.shell) {
               const s = k - Math.floor(k);
+              // each shell comes up in the hand and is thumbed into the port
+              if (hands.shell) [handTo, handW] = [hands.shell, kf(s, [[0, 0.55], [0.12, 1], [0.7, 1], [0.92, 0.55]])];
               parts.shell.visible = s < 0.8;
               parts.shell.position.set(0, kf(s, [[0, -0.09], [0.6, 0.012]]), kf(s, [[0, 0.02], [0.4, 0.02], [0.75, -0.05]]));
               cue(`shell${Math.floor(k)}`, lead + (Math.floor(k) + 0.6) * per, u, f, 'shell');
@@ -1199,7 +1268,21 @@ export default function WeaponView({
             // a mirrored left arm is the right one, so its bones are still the 'R' ones
             const sideL = mirrored ? 'R' : 'L';
             const poleL = mirrored ? (long ? POLE_LONG : POLE) : long ? POLE_LONG_L : POLE_L;
-            if (gripL) holdGrip(armL, sideL, gripL, poleL, curl, 'L');
+            let leftAt: THREE.Object3D | undefined = gripL;
+            if (gripL && handTo && handW > 0.001) {
+              // between the grip and the reload anchor, eased
+              const w = handW * handW * (3 - 2 * handW);
+              gripL.updateWorldMatrix(true, false);
+              handTo.updateWorldMatrix(true, false);
+              gripL.matrixWorld.decompose(_ha, _qa, _hb);
+              handTo.matrixWorld.decompose(_hb, _qb, handAt.scale);
+              handAt.position.lerpVectors(_ha, _hb, w);
+              handAt.quaternion.slerpQuaternions(_qa, _qb, w);
+              handAt.scale.set(1, 1, 1);
+              handAt.updateMatrixWorld(true);
+              leftAt = handAt;
+            }
+            if (leftAt) holdGrip(armL, sideL, leftAt, poleL, curl, 'L');
             else reachArm(armL, sideL, canonPoint(armL, mirrored ? REST : REST_L), canonPoint(armL, mirrored ? POLE : POLE_L)); // a free hand drops out of sight
           }
         }

@@ -4,6 +4,8 @@ import "./globals.css";
 import TransitionProvider from "@/components/TransitionProvider";
 import GlobalMusicPlayer from "@/components/GlobalMusicPlayer";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -146,6 +148,10 @@ export default function RootLayout({
             {children}
           </TransitionProvider>
           <GlobalMusicPlayer />
+          {/* Vercel Web Analytics (visitors, pages, referrers, countries, devices, custom events)
+              and Speed Insights (real-user Core Web Vitals) */}
+          <Analytics />
+          <SpeedInsights />
         </body>
       </html>
     </ClerkProvider>

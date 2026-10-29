@@ -9,10 +9,10 @@
  * `theme` dresses the door (frame, light and particles, see room/DoorsLayer.tsx) in `color`.
  * The 'portal' theme is a nether portal you walk into instead of opening.
  */
-export type DoorTheme = 'portal' | 'creator' | 'bored' | 'developer' | 'github' | 'instagram' | 'contact';
+export type DoorTheme = 'portal' | 'creator' | 'bored' | 'developer' | 'github' | 'instagram' | 'contact' | 'jewelry';
 
 /** Paste the Minecraft portfolio's address here: walking into the portal goes there. */
-export const MINECRAFT_URL = '';
+export const MINECRAFT_URL = 'https://minecraft-ui-portfolio.vercel.app';
 
 export type RoomDoor = {
   id: string;
@@ -72,6 +72,19 @@ export const ROOM_DOORS: RoomDoor[] = [
     description: 'A physics-driven ID badge (Rapier) beside an interactive resume shell that streams its answers.',
     stack: ['React Three Fiber', 'Rapier', 'TypeScript'],
     href: '/developer',
+  },
+  {
+    id: 'anand',
+    side: 'right',
+    theme: 'jewelry',
+    color: '#e8c27a',
+    tag: 'Client site',
+    title: 'Anand Ornaments',
+    description:
+      'Gold and silver jewellery for bridal, festive and everyday wear, from Maitra, Ramban. An editorial storefront in warm gold on velvet.',
+    stack: ['Next.js', 'Tailwind', 'Vercel'],
+    href: 'https://dad-boph-eight.vercel.app/',
+    cta: 'Visit the shop',
   },
   {
     id: 'github',

@@ -1,9 +1,11 @@
 /**
- * Sound for the first-person grid room, synthesised with Web Audio (no files to load).
+ * Sound for the first-person grid room, with Web Audio.
  *
- * Footsteps are a short band-passed noise scuff over a soft low thump, varied a little every
- * step so they never sound like one sample on repeat. Landing, jumping, interaction clicks and
- * the door hum use the same building blocks.
+ * Gunshots, footsteps, landings and weapon handling are real recordings (public/sounds: tiny
+ * mono mp3 clips cut from CC0 libraries, the Free Firearm Sound Library and Kenney's Impact
+ * Sounds), fetched once the room's audio first wakes up and played with a little pitch and level
+ * variation so no two sound alike. Until they've arrived (or if they can't), the synthesised
+ * versions below stand in. Clicks, doors and the portal are synthesised.
  */
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -24,6 +26,7 @@ const audio = () => {
     noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const data = noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    loadSamples(ctx);
   }
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   return ctx;
@@ -80,8 +83,52 @@ const thump = (opts: { at?: number; from: number; to: number; duration: number; 
   osc.stop(t + opts.duration + 0.02);
 };
 
+/* ── recorded clips ──────────────────────────────────────────────────── */
+const SAMPLES = [
+  'shot-glock', 'shot-deagle', 'shot-sheriff', 'shot-sw500', 'shot-mp5', 'shot-ak47', 'shot-shotgun',
+  'step-0', 'step-1', 'step-2', 'step-3', 'step-4', 'land',
+  'mech-mag-out', 'mech-mag-in', 'mech-slide', 'mech-cylinder', 'mech-shell', 'mech-pump', 'mech-equip', 'dry-fire',
+];
+const samples = new Map<string, AudioBuffer>();
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') (window as unknown as { __audioDebug: unknown }).__audioDebug = { samples };
+let samplesAsked = false;
+function loadSamples(c: AudioContext) {
+  if (samplesAsked) return;
+  samplesAsked = true;
+  for (const name of SAMPLES) {
+    fetch(`/sounds/${name}.mp3`)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status)))
+      .then((data) => c.decodeAudioData(data))
+      .then((buf) => samples.set(name, buf))
+      .catch(() => {});
+  }
+}
+
+/** Play a recorded clip if it has loaded; `false` if not (the caller falls back to synthesis). */
+const sample = (name: string, opts: { gain?: number; rate?: number; at?: number } = {}) => {
+  const c = audio();
+  const buf = samples.get(name);
+  if (!c || !master || !buf) return false;
+  if (muted || volume <= 0) return true;
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = opts.rate ?? 1;
+  const g = c.createGain();
+  g.gain.value = opts.gain ?? 1;
+  src.connect(g).connect(master);
+  src.start(opts.at ?? c.currentTime);
+  return true;
+};
+const vary = (amount: number) => 1 + (Math.random() * 2 - 1) * amount;
+let lastStep = -1;
+
 /** One footstep. `speed` 0..1 (walking → sprinting) makes it a little harder and brighter. */
 export const playStep = (speed = 0.5) => {
+  // never the same recording twice in a row
+  let i = Math.floor(Math.random() * 5);
+  if (i === lastStep) i = (i + 1) % 5;
+  lastStep = i;
+  if (sample(`step-${i}`, { gain: (0.38 + speed * 0.22) * vary(0.12), rate: vary(0.06) * (1 + speed * 0.04) })) return;
   const v = 0.6 + Math.random() * 0.3;
   burst({ duration: 0.09 + speed * 0.03, freq: 900 + Math.random() * 500 + speed * 600, q: 0.9, gain: 0.16 * v * (0.8 + speed * 0.5) });
   burst({ duration: 0.05, freq: 3200 + Math.random() * 900, q: 1.4, gain: 0.035 * v });
@@ -90,6 +137,10 @@ export const playStep = (speed = 0.5) => {
 
 /** Landing after a jump; `impact` 0..1. */
 export const playLand = (impact = 0.6) => {
+  if (sample('land', { gain: 0.35 + impact * 0.45, rate: vary(0.05) })) {
+    sample(`step-${Math.floor(Math.random() * 5)}`, { gain: 0.3 * impact, rate: 0.9 });
+    return;
+  }
   thump({ from: 140, to: 45, duration: 0.2, gain: 0.5 * impact + 0.15 });
   burst({ duration: 0.14, freq: 700, q: 0.7, gain: 0.22 * impact + 0.05 });
   const c = audio();
@@ -145,8 +196,10 @@ const SHOTS: Record<string, ShotVoice> = {
   shotgun: { body: 700, crack: 3000, thump: 70, tail: 0.55, size: 1.15 },
 };
 
-/** A gunshot: a sharp crack, the body of the blast, a low punch and the room's tail. */
-export const playShot = (sound: string) => {
+/** A gunshot: the weapon's own recording if loaded (`weapon` is its id), else synthesised from
+ *  its sound class. */
+export const playShot = (sound: string, weapon?: string) => {
+  if (weapon && sample(`shot-${weapon}`, { gain: 0.6 * vary(0.06), rate: vary(0.035) })) return;
   const v = SHOTS[sound];
   const c = audio();
   if (!v || !c) return;
@@ -160,14 +213,30 @@ export const playShot = (sound: string) => {
 
 /** Trigger on an empty chamber. */
 export const playDryFire = () => {
+  if (sample('dry-fire', { gain: 0.5, rate: 1.3 })) return;
   burst({ duration: 0.025, freq: 3400, q: 2.5, gain: 0.12 });
   playClick(1.6);
 };
 
 /** Mechanical clicks for reloads: mag out, mag in, slide / bolt, cylinder, shell, pump. */
+const MECH: Record<string, [string, number, number][]> = {
+  // [clip, delay (s), gain]
+  magOut: [['mech-mag-out', 0, 0.45]],
+  magIn: [['mech-mag-in', 0, 0.6], ['mech-slide', 0.05, 0.18]],
+  slide: [['mech-slide', 0, 0.5], ['mech-mag-in', 0.1, 0.4]],
+  cylinder: [['mech-cylinder', 0, 0.4], ['mech-cylinder', 0.045, 0.25]],
+  shell: [['mech-shell', 0, 0.5]],
+  pump: [['mech-pump', 0, 0.5], ['mech-slide', 0.16, 0.45]],
+  equip: [['mech-equip', 0, 0.3]],
+};
 export const playMech = (kind: 'magOut' | 'magIn' | 'slide' | 'cylinder' | 'shell' | 'pump' | 'equip') => {
   const c = audio();
   if (!c) return;
+  const parts = MECH[kind];
+  if (parts && samples.has(parts[0][0])) {
+    for (const [name, delay, gain] of parts) sample(name, { gain: gain * vary(0.1), rate: vary(0.05), at: c.currentTime + delay });
+    return;
+  }
   if (kind === 'magOut') {
     burst({ duration: 0.05, freq: 2200, q: 2, gain: 0.12 });
     thump({ at: c.currentTime + 0.02, from: 260, to: 160, duration: 0.06, gain: 0.08 });

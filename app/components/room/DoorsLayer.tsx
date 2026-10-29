@@ -30,7 +30,7 @@ export type DoorsApi = {
 
 const DOOR_W = 0.34;
 const DOOR_H = 0.62;
-const THEME_ID: Record<DoorTheme, number> = { creator: 0, bored: 1, developer: 2, github: 3, instagram: 4, contact: 5, portal: 6 };
+const THEME_ID: Record<DoorTheme, number> = { creator: 0, bored: 1, developer: 2, github: 3, instagram: 4, contact: 5, jewelry: 7, portal: 6 };
 // three.js has z the other way round from the room
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, -z);
 
@@ -67,6 +67,7 @@ float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += a
 float box(vec2 p, vec2 c, vec2 h) { vec2 d = abs(p - c) - h; return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0); }
 float line(float d, float w) { return 1.0 - smoothstep(w * 0.5, w * 0.5 + fwidth(d) * 1.2, abs(d)); }
 float glowOf(float d, float r) { return exp(-max(d, 0.0) / r); }
+float seg(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h); }
 
 // a door's face in metres: x across the whole door (-W/2..W/2), y up (0..H)
 const vec2 S = vec2(${DOOR_W}, ${DOOR_H});
@@ -193,6 +194,40 @@ void main() {
     float cam = box(cp, vec2(0.0), vec2(0.07, 0.07)) - 0.022;
     e += line(cam, 0.003) * 2.4 + line(length(cp) - 0.034, 0.003) * 2.4;
     e += (1.0 - smoothstep(0.004, 0.006, length(cp - vec2(0.055, 0.055)))) * 2.4;
+    e += line(inset, 0.0015) * 1.2;
+  } else if (uTheme > 6.5) {
+    // JEWELLERY: deep velvet under a gold Mughal arch beaded with filigree, and a brilliant-cut
+    // diamond throwing fire, its facets catching the light
+    vec2 ap = vec2(abs(p.x), p.y);
+    float arch = ap.y < 0.42 ? abs(ap.x - 0.13) : abs(length(ap - vec2(-0.04, 0.42)) - 0.17);
+    float inside = ap.y < 0.42 ? step(ap.x, 0.13) : step(length(ap - vec2(-0.04, 0.42)), 0.17);
+    inside *= step(0.03, p.y);
+    col = mix(col, vec3(0.075, 0.012, 0.03) * (0.65 + 0.5 * fbm(p * 70.0)), inside);
+    e += line(arch, 0.0026) * 2.2 + line(arch - 0.012, 0.001) * 0.9;
+    // filigree beads along the arch
+    float along = ap.y < 0.42 ? ap.y : 0.42 + atan(ap.y - 0.42, ap.x + 0.04) * 0.17;
+    float bead = 1.0 - smoothstep(0.0022, 0.0034, length(vec2(arch - 0.02, mod(along, 0.022) - 0.011)));
+    e += bead * step(0.04, p.y) * 1.3;
+    // the diamond: table, crown, girdle, pavilion down to the culet
+    vec2 tl = vec2(-0.03, 0.375), tr = vec2(0.03, 0.375), gl = vec2(-0.068, 0.338), gr = vec2(0.068, 0.338), cu = vec2(0.0, 0.245);
+    float d = min(min(seg(p, tl, tr), seg(p, tl, gl)), min(seg(p, tr, gr), seg(p, gl, gr)));
+    d = min(d, min(seg(p, gl, cu), seg(p, gr, cu)));
+    float facets = min(min(seg(p, vec2(-0.03, 0.338), cu), seg(p, vec2(0.03, 0.338), cu)), min(seg(p, tl, vec2(-0.012, 0.338)), seg(p, tr, vec2(0.012, 0.338))));
+    facets = min(facets, min(seg(p, vec2(-0.012, 0.338), cu), seg(p, vec2(0.012, 0.338), cu)));
+    float wy = p.y > 0.338 ? mix(0.068, 0.03, (p.y - 0.338) / 0.037) : 0.068 * (p.y - 0.245) / 0.093;
+    float gem = step(abs(p.x), wy) * step(0.245, p.y) * step(p.y, 0.375);
+    vec3 fire = 0.5 + 0.5 * cos(6.2831 * (fract(p.x * 18.0 + p.y * 13.0 + t * 0.25) + vec3(0.0, 0.33, 0.67)));
+    extra += gem * mix(vec3(0.75, 0.85, 1.0), fire, 0.45) * (0.18 + 0.22 * fbm(p * 120.0 + t * 0.5));
+    extra += vec3(1.0, 0.97, 0.9) * (line(d, 0.0018) * 1.4 + line(facets, 0.0009) * 0.6);
+    // glints: four-pointed stars that flare on the facets in turn
+    for (int i = 0; i < 4; i++) {
+      float fi = float(i);
+      vec2 gp = vec2(-0.04 + fi * 0.027, 0.33 + 0.03 * sin(fi * 2.1));
+      float tw = pow(max(0.0, sin(t * 1.3 + fi * 1.9)), 12.0);
+      vec2 q2 = abs(p - gp);
+      float star = (exp(-q2.x * 900.0) * exp(-q2.y * 90.0) + exp(-q2.y * 900.0) * exp(-q2.x * 90.0));
+      extra += vec3(1.0, 0.98, 0.92) * star * tw * 1.6;
+    }
     e += line(inset, 0.0015) * 1.2;
   } else {
     // CONTACT: an art-deco sunburst rising from the threshold, in warm gold
@@ -328,6 +363,17 @@ const STYLES: Record<DoorTheme, Style> = {
     boost: 1.35,
     spawn: (p) => fromDoor(p, [-0.005, 0.02], [0.01, 0.03]),
     fade: (u, p, t) => softFade(u) * (0.35 + 0.65 * Math.max(0, Math.sin(t * 7 + p.seed * 30))),
+  },
+  // gold dust and the odd diamond glint, twinkling as they drift
+  jewelry: {
+    count: 26,
+    square: false,
+    colors: ['#f6dba0', '#e8c27a', '#ffffff', '#fff3d6'],
+    size: [0.003, 0.008],
+    life: [2.5, 4.5],
+    boost: 1.35,
+    spawn: (p) => fromDoor(p, [0.004, 0.02], [0.01, 0.03]),
+    fade: (u, p, t) => softFade(u) * (0.3 + 0.7 * Math.max(0, Math.sin(t * 5 + p.seed * 40)) ** 2),
   },
   contact: { count: 18, square: false, colors: ['#fde68a', '#fbbf24', '#fff7d6'], size: [0.004, 0.009], life: [3, 5], boost: 1.1, spawn: (p) => fromDoor(p, [0.002, 0.018], [0.02, 0.04]) },
 };

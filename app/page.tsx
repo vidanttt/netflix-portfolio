@@ -4,6 +4,7 @@ import { memo, useState, useEffect, useCallback, useMemo, useRef, type Component
 import { useRouter } from 'next/navigation';
 import ProfileCard from './components/ProfileCard';
 import NetflixLoader from './components/NetflixLoader';
+import { track } from '@/lib/track';
 import ParticleText from '@/components/ParticleText';
 import type { RoomCamera, RoomControl } from '@/components/GridScan';
 import GridScan, { lockPointer, TRAIN_FRONT, TRAIN_GAP_H, TRAIN_GAP_HALF } from '@/components/GridScan';
@@ -181,6 +182,7 @@ export default function Home() {
     lockPointer(roomCanvas());
     unlockRoomAudio();
     setFps(true);
+    track('Play room');
   };
   const leaveRoom = useCallback(() => {
     setFps(false);
@@ -213,6 +215,9 @@ export default function Home() {
     }
   }, []);
   const updateRoom = useCallback((patch: Partial<RoomSettings>) => {
+    if (patch.character) track('Character', { name: patch.character });
+    if (patch.theme) track('Room theme', { name: patch.theme });
+    if (patch.crosshair) track('Crosshair', { style: patch.crosshair });
     setRoomSettings((prev) => {
       const next = { ...prev, ...patch };
       try {
@@ -654,6 +659,7 @@ export default function Home() {
   // taken to the link (or, with none yet, told so and let back out)
   const enterPortal = useRef<(i: number) => void>(() => {});
   enterPortal.current = (i: number) => {
+    track('Portal entered', { door: ROOM_DOORS[i]?.title ?? '' });
     playPortalEnter();
     setOpenDoor(i);
     window.setTimeout(() => {
@@ -676,6 +682,7 @@ export default function Home() {
   useEffect(() => () => setPortalHum(0), []);
 
   const enterDoor = useCallback((i: number) => {
+    track('Door opened', { door: ROOM_DOORS[i]?.title ?? '' });
     setOpenDoor(i);
     // let the room know it is paused before the mouse is released, so that doesn't end first person
     window.setTimeout(() => {
@@ -693,6 +700,7 @@ export default function Home() {
 
   const followDoor = (i: number) => {
     const href = ROOM_DOORS[i]?.href;
+    track('Project link opened', { door: ROOM_DOORS[i]?.title ?? '', href: href ?? '' });
     if (!href) return;
     if (href.startsWith('/')) {
       setDoorCard(null);
@@ -890,12 +898,14 @@ export default function Home() {
   }, []);
 
   const handleLoaderComplete = () => {
+    track('Intro watched');
     setLoader('done');
     sessionStorage.setItem('netflixLoaderSeen', 'true');
     document.documentElement.setAttribute('data-intro-seen', '');
   };
 
   const handleProfileSelect = (profile: Profile) => {
+    track('Profile chosen', { profile: profile.id });
     // 1. Show the loading screen overlay (lives in layout, won't unmount)
     startTransition();
 
@@ -904,6 +914,7 @@ export default function Home() {
   };
 
   const handleBoredSelect = () => {
+    track('Bored opened');
     // 1. Show the loading screen overlay
     startTransition();
 

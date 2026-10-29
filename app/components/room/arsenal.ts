@@ -1,4 +1,5 @@
 import type { RoomControl } from '@/components/GridScan';
+import { track } from '@/lib/track';
 import { playBotDown, playDryFire, playHit, playShot, playSwish } from '@/lib/roomAudio';
 import { WEAPONS, type Weapon } from './weapons';
 import type { WeaponViewApi } from './WeaponView';
@@ -116,6 +117,7 @@ export class Arsenal {
   /** pick a weapon up (from the bench) and draw it */
   give(id: string) {
     if (this.has(id)) return;
+    track('Weapon picked up', { weapon: id }, true);
     const owned = [...this.state.owned, id];
     const slot = WEAPONS.findIndex((w) => w.id === id);
     this.emit({ owned });
@@ -284,7 +286,7 @@ export class Arsenal {
     a.mag -= 1;
     this.cooldown = w.interval;
     this.view?.fire(false);
-    playShot(w.sound);
+    playShot(w.sound, w.id);
     this.stats.shots += 1;
     const aiming = this.alt;
     // the shot goes where the crosshair is now; the recoil only moves the view afterwards
@@ -346,6 +348,7 @@ export class Arsenal {
     const killed = this.hooks.damageBot(hit.bot, amount, !!hit.head, hit.point);
     if (hit.head) this.stats.heads += 1;
     if (killed) {
+      track('Bot killed', { weapon: this.weapon.id }, true); // once per weapon per visit, to keep the event count sane
       this.stats.kills += 1;
       this.stats.streak += 1;
       this.stats.best = Math.max(this.stats.best, this.stats.streak);
