@@ -1,4 +1,5 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { gsap } from 'gsap';
 
 export interface StaggeredMenuItem {
@@ -19,6 +20,8 @@ export interface StaggeredMenuProps {
   displayItemNumbering?: boolean;
   className?: string;
   logoUrl?: string;
+  /** where the logo goes when clicked (leave out for a plain logo) */
+  logoHref?: string;
   menuButtonColor?: string;
   openMenuButtonColor?: string;
   accentColor?: string;
@@ -38,6 +41,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   displayItemNumbering = true,
   className,
   logoUrl = '/src/assets/logos/reactbits-gh-white.svg',
+  logoHref,
   menuButtonColor = '#fff',
   openMenuButtonColor = '#fff',
   changeMenuColorOnOpen = true,
@@ -401,7 +405,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
         >
           {(() => {
             const raw = colors && colors.length ? colors.slice(0, 4) : ['#1e1e22', '#35353c'];
-            let arr = [...raw];
+            const arr = [...raw];
             if (arr.length >= 3) {
               const mid = Math.floor(arr.length / 2);
               arr.splice(mid, 1);
@@ -421,14 +425,25 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
           aria-label="Main navigation header"
         >
           <div className="sm-logo flex items-center select-none pointer-events-auto" aria-label="Logo">
-            <img
-              src={logoUrl || '/src/assets/logos/reactbits-gh-white.svg'}
-              alt="Logo"
-              className="sm-logo-img block h-8 w-auto object-contain"
-              draggable={false}
-              width={110}
-              height={24}
-            />
+            {(() => {
+              const logo = (
+                <img
+                  src={logoUrl || '/src/assets/logos/reactbits-gh-white.svg'}
+                  alt={logoHref ? 'Back to home' : 'Logo'}
+                  className="sm-logo-img block h-8 w-auto object-contain"
+                  draggable={false}
+                  width={110}
+                  height={24}
+                />
+              );
+              return logoHref ? (
+                <Link href={logoHref} className="cursor-target" aria-label="Back to home" onClick={closeMenu}>
+                  {logo}
+                </Link>
+              ) : (
+                logo
+              );
+            })()}
           </div>
 
           <button
@@ -501,17 +516,31 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
               {items && items.length ? (
                 items.map((it, idx) => (
                   <li className="sm-panel-itemWrap relative overflow-hidden leading-none" key={it.label + idx}>
-                    <a
-                      className="sm-panel-item relative text-black font-semibold text-[4rem] cursor-pointer leading-none tracking-[-2px] uppercase transition-[background,color] duration-150 ease-linear inline-block no-underline pr-[1.4em]"
-                      href={it.link}
-                      onClick={closeMenu}
-                      aria-label={it.ariaLabel}
-                      data-index={idx + 1}
-                    >
-                      <span className="sm-panel-itemLabel inline-block [transform-origin:50%_100%] will-change-transform">
-                        {it.label}
-                      </span>
-                    </a>
+                    {it.link.startsWith('/') ? (
+                      <Link
+                        className="sm-panel-item relative text-black font-semibold text-[4rem] cursor-pointer leading-none tracking-[-2px] uppercase transition-[background,color] duration-150 ease-linear inline-block no-underline pr-[1.4em]"
+                        href={it.link}
+                        onClick={closeMenu}
+                        aria-label={it.ariaLabel}
+                        data-index={idx + 1}
+                      >
+                        <span className="sm-panel-itemLabel inline-block [transform-origin:50%_100%] will-change-transform">
+                          {it.label}
+                        </span>
+                      </Link>
+                    ) : (
+                      <a
+                        className="sm-panel-item relative text-black font-semibold text-[4rem] cursor-pointer leading-none tracking-[-2px] uppercase transition-[background,color] duration-150 ease-linear inline-block no-underline pr-[1.4em]"
+                        href={it.link}
+                        onClick={closeMenu}
+                        aria-label={it.ariaLabel}
+                        data-index={idx + 1}
+                      >
+                        <span className="sm-panel-itemLabel inline-block [transform-origin:50%_100%] will-change-transform">
+                          {it.label}
+                        </span>
+                      </a>
+                    )}
                   </li>
                 ))
               ) : (

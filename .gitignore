@@ -46,3 +46,12 @@ next-env.d.ts
 
 # raw CC0 sound downloads (the trimmed clips live in public/sounds)
 /_sound-sources/
+
+# brag launch video: generated, large
+/brag-output/
+
+# graphify knowledge graph (generated)
+/graphify-out/
+
+# helper zips
+/*.zip

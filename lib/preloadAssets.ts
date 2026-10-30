@@ -1,17 +1,16 @@
 /**
  * Asset Preloader
  * ───────────────
- * Preloads all critical assets (videos, images, API data) during the loading
- * screen so the page is buttery-smooth when it appears.
- *
- * LOCAL VIDEOS use fetch → blob → Object URL so the data lives in memory
- * and the VideoCarousel can use the blob URLs directly (no re-download).
+ * Preloads the creator page's heavy assets (videos, the hero statue, images, API data) during
+ * the loading screen so the page is smooth when it appears. What gets preloaded is read from
+ * lib/creatorContent.ts, the same list the page renders from.
  */
+import { SHOWREELS, REEL_VIDEOS, CREATOR_CHANNELS, STATUE_MODEL, CREATOR_IMAGES } from '@/lib/creatorContent';
 
 // ── Types ──
 export interface PreloadManifest {
-  /** Local video files (e.g. /showreels/1.mp4) — fetched as blobs */
-  localVideos: string[];
+  /** Files on this site that are downloaded in full (local videos, the 3D model) */
+  files: string[];
   /** Remote video URLs (e.g. Cloudinary) — preloaded via <video> element */
   remoteVideos: string[];
   /** Image URLs to preload */
@@ -29,63 +28,24 @@ export interface PreloadResult {
 
 type ProgressCallback = (result: PreloadResult) => void;
 
-// ── Global video blob cache ──
-// Maps original src → blob object URL.  Survives across re-renders.
-const videoBlobCache = new Map<string, string>();
-const cacheListeners = new Set<() => void>();
-
-/** Look up a cached blob URL for a given original src. */
-export function getCachedVideoUrl(originalSrc: string): string {
-  return videoBlobCache.get(originalSrc) || originalSrc;
-}
-
-/** Check if a video is already cached. */
-export function isVideoCached(originalSrc: string): boolean {
-  return videoBlobCache.has(originalSrc);
-}
-
-/** Subscribe to cache updates (so components can re-render when blobs load) */
-export function subscribeToVideoCache(callback: () => void) {
-  cacheListeners.add(callback);
-  return () => cacheListeners.delete(callback);
-}
-
-/** Notify listeners of cache updates */
-function notifyCacheUpdate() {
-  cacheListeners.forEach((cb) => cb());
-}
-
 // ── Helpers ──
 
-/**
- * Fetch a local video as a blob and store it as an Object URL in the cache.
- * The actual <video> element in the carousel will use the blob URL so
- * there is zero re-downloading — the data is already in memory.
- */
-async function fetchVideoAsBlob(src: string, timeoutMs = 15000): Promise<void> {
-  if (videoBlobCache.has(src)) return; // already cached
-
+/** Download a file completely so the browser has it cached when the page asks for it. */
+async function warmFile(src: string, timeoutMs = 15000): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-
   try {
     const res = await fetch(src, { signal: controller.signal });
-    clearTimeout(timer);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    videoBlobCache.set(src, blobUrl);
-    notifyCacheUpdate();
-  } catch {
+    await res.arrayBuffer();
+  } finally {
     clearTimeout(timer);
-    // On failure, the carousel will fall back to the original src
   }
 }
 
 /**
- * Preload a remote video using a <video> element. We don't blob-cache
- * remote videos (they can be huge / CORS-restricted) — just warm the
- * browser's media cache.
+ * Preload a remote video using a <video> element. We don't cache the bytes ourselves
+ * (they can be huge / CORS-restricted), just warm the browser's media cache.
  */
 function preloadRemoteVideo(src: string, timeoutMs = 15000): Promise<void> {
   return new Promise<void>((resolve) => {
@@ -173,9 +133,9 @@ export async function preloadAllAssets(
 ): Promise<PreloadResult> {
   const tasks: Array<{ label: string; fn: () => Promise<void> }> = [];
 
-  // Local videos (highest priority — fetched as blobs for guaranteed caching)
-  for (const src of manifest.localVideos) {
-    tasks.push({ label: `video:${src}`, fn: () => fetchVideoAsBlob(src, 12000) });
+  // Local files (highest priority — fetched in full)
+  for (const src of manifest.files) {
+    tasks.push({ label: `file:${src}`, fn: () => warmFile(src, 25000) });
   }
 
   // Remote videos (Cloudinary reels — preloaded via <video> element)
@@ -241,47 +201,16 @@ export async function preloadAllAssets(
   return report();
 }
 
-// ── Default manifest for the creator page ──
+// ── Manifest for the creator page ──
 
 export function getCreatorPageManifest(): PreloadManifest {
-  // YouTube channel URLs that HeroParallax will fetch
-  const channelUrls = [
-    'https://www.youtube.com/@bachuuuuu',
-    'https://www.youtube.com/@realpeachgg',
-    'https://www.youtube.com/@EliteShot',
-    'https://www.youtube.com/@DoctorNarcos/shorts',
-    'https://www.youtube.com/@PeachGaming',
-    'https://www.youtube.com/@_Inferno_playz',
-    'https://www.youtube.com/@vibhorsverse8535',
-  ];
+  // each distinct channel once (the grid repeats some)
+  const channelUrls = [...new Set(CREATOR_CHANNELS.map((c) => c.channelUrl))];
 
   return {
-    localVideos: [
-      '/showreels/1.mp4',
-      '/showreels/2.mp4',
-      '/showreels/3.mp4',
-      '/showreels/4.mp4',
-      '/showreels/5.mp4',
-      '/showreels/6.mp4',
-    ],
-    remoteVideos: [
-      'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777233966/vid1_nc11bz.mp4',
-      'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777235213/Vid2_kln2ha.mp4',
-      'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777235272/Vid3_ntpwdw.mp4',
-      'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777235289/Vid5_d0rs29.mp4',
-      'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777234062/vid6_usi9t4.mp4',
-    ],
-    images: [
-      '/hero-statue.png',
-      '/image.png',
-      '/ae-card.png',
-      '/pr-card.png',
-      '/davinci-card.png',
-      '/blender-card.png',
-      '/ps-card.png',
-    ],
-    apiEndpoints: channelUrls.map(
-      (url) => `/api/youtube-channel?url=${encodeURIComponent(url)}`
-    ),
+    files: [STATUE_MODEL, ...SHOWREELS],
+    remoteVideos: REEL_VIDEOS,
+    images: CREATOR_IMAGES,
+    apiEndpoints: channelUrls.map((url) => `/api/youtube-channel?url=${encodeURIComponent(url)}`),
   };
 }

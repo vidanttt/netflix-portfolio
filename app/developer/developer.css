@@ -226,7 +226,6 @@
   .dv-left { flex: 0 0 auto; height: min(62vh, 520px); border-right: 0; border-bottom: 1px solid var(--dv-line); }
   .dv-right { height: 78vh; }
   .dv-giant { font-size: clamp(2.8rem, 14vw, 5.5rem); }
-  .dv-facts { display: none; }
   .dt-fetch { grid-template-columns: 1fr; }
   .dt-ascii { display: none; }
   .dt-skill { grid-template-columns: 1fr; gap: 0.3rem; }
@@ -263,7 +262,7 @@
   position: fixed;
   left: 0;
   top: 0;
-  z-index: 2147483000;
+  z-index: 1000; /* above the page, below the loading screen (9999) */
   border-radius: 52% 48% 50% 50% / 50% 52% 48% 50%;
   animation: glass-blob-morph 6s ease-in-out infinite alternate;
   cursor: grab;
@@ -289,3 +288,13 @@ html .glass-blob[data-refract] {
   100% { border-radius: 50% 50% 46% 54% / 47% 54% 46% 53%; }
 }
 @media (prefers-reduced-motion: reduce) { .glass-blob { animation: none; } }
+
+/* small screens: the badge on top, the facts stacked underneath it (the same text sits behind the badge on desktop) */
+@media (max-width: 1023px) {
+  .dv-left { height: auto; display: flex; flex-direction: column; }
+  .dv-canvas { position: relative; inset: auto; flex: 0 0 auto; height: min(62vh, 520px); }
+  .dv-behind { position: relative; inset: auto; order: 2; padding: 0 clamp(1.2rem, 3vw, 2.4rem) 1.6rem; justify-content: flex-start; }
+  .dv-facts { text-align: left; align-self: flex-start; max-width: none; }
+  .dv-stats { justify-content: flex-start; }
+  .dv-hint { bottom: auto; top: calc(min(62vh, 520px) - 1.8rem); }
+}

@@ -12,6 +12,11 @@ import "./developer.css";
 export default function DeveloperPage() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState<Date | null>(null);
+  // a smaller lens on phones
+  const [lens, setLens] = useState(210);
+  useEffect(() => {
+    setLens(window.innerWidth < 640 ? 150 : 210);
+  }, []);
 
   // Clock starts after mount so server and client markup match
   useEffect(() => {
@@ -53,6 +58,7 @@ export default function DeveloperPage() {
       </nav>
 
       <main className="dv-main">
+        <h1 className="sr-only">Vidant Sharma, creative developer</h1>
         {/* Left: details sit behind the physics badge */}
         <section className="dv-left" aria-label="Profile badge">
           {/* Animated field of glyphs and shapes behind the badge; reacts to the pointer */}
@@ -81,7 +87,7 @@ export default function DeveloperPage() {
               introDuration={1.6}
             />
           </div>
-          <div className="dv-behind" aria-hidden="true">
+          <div className="dv-behind">
             <div className="dv-facts">
               <div className="dv-fact">
                 <div className="dv-fact-label">Role</div>
@@ -101,7 +107,7 @@ export default function DeveloperPage() {
                   <span>projects</span>
                 </div>
                 <div>
-                  <strong>1M+</strong>
+                  <strong>70M+</strong>
                   <span>views</span>
                 </div>
                 <div>
@@ -124,7 +130,8 @@ export default function DeveloperPage() {
         </section>
       </main>
 
-      <GlassBlob size={210} />
+      {/* starts in the empty corner of the badge side, clear of the terminal */}
+      <GlassBlob size={lens} start={(w, _h, size) => (w >= 1024 ? { x: 28, y: 112 } : { x: w - size - 14, y: 96 })} />
 
       <footer className="dv-footer">
         <span className="dv-live">available for projects</span>

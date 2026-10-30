@@ -16,6 +16,8 @@ interface ChannelData {
   title: string;
   /** Optional: provide a thumbnail directly to skip fetching */
   thumbnail?: string;
+  /** Optional: a saved picture shown only when the live avatar can't be fetched */
+  fallbackThumbnail?: string;
 }
 
 interface ResolvedChannel {
@@ -76,13 +78,13 @@ function useResolvedChannels(channels: ChannelData[]): ResolvedChannel[] {
   const fallback = (c: ChannelData): ResolvedChannel => ({
     title: c.title,
     link: c.channelUrl,
-    thumbnail: c.thumbnail || "",
+    thumbnail: c.thumbnail || c.fallbackThumbnail || "",
   });
 
   const [resolved, setResolved] = useState<ResolvedChannel[]>(() => channels.map(fallback));
 
   // Stable key so a new array identity with the same channels doesn't refetch everything
-  const key = channels.map((c) => `${c.channelUrl}|${c.title}|${c.thumbnail || ""}`).join(",");
+  const key = channels.map((c) => `${c.channelUrl}|${c.title}|${c.thumbnail || ""}|${c.fallbackThumbnail || ""}`).join(",");
 
   useEffect(() => {
     let cancelled = false;

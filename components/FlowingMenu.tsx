@@ -179,8 +179,10 @@ const MenuItem: React.FC<MenuItemProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleMouseEnter = (ev: React.MouseEvent<HTMLAnchorElement>) => enter(ev.clientX, ev.clientY);
-  const handleMouseLeave = (ev: React.MouseEvent<HTMLAnchorElement>) => leave(ev.clientX, ev.clientY);
+  const handleMouseEnter = (ev: React.MouseEvent<HTMLElement>) => enter(ev.clientX, ev.clientY);
+  const handleMouseLeave = (ev: React.MouseEvent<HTMLElement>) => leave(ev.clientX, ev.clientY);
+  // a row with no link is a plain row (an href="#" anchor would scroll the page to the top)
+  const Row = (link ? 'a' : 'div') as 'a';
 
   return (
     <div
@@ -188,15 +190,15 @@ const MenuItem: React.FC<MenuItemProps> = ({
       ref={itemRef}
       style={{ borderTop: isFirst ? 'none' : `1px solid ${borderColor}` }}
     >
-      <a
-        className="flex items-center justify-center h-full relative cursor-pointer uppercase no-underline font-semibold text-[4vh]"
-        href={link || '#'}
+      <Row
+        className={`flex items-center justify-center h-full relative uppercase no-underline font-semibold text-[4vh] ${link ? 'cursor-pointer' : 'cursor-default'}`}
+        {...(link ? { href: link } : {})}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         style={{ color: textColor }}
       >
         {text}
-      </a>
+      </Row>
       <div
         className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none translate-y-[101%]"
         ref={marqueeRef}

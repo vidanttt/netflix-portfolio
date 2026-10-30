@@ -242,7 +242,7 @@ function useProfileCardTexture(): THREE.Texture | null {
       made = t;
       setTex(t);
     };
-    img.src = "/image.png"; // the profile photo used on the creator page
+    img.src = "/image.jpg"; // the profile photo used on the creator page
     return () => {
       dead = true;
       made?.dispose();

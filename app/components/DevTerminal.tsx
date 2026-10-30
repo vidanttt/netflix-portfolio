@@ -46,7 +46,7 @@ const PROFILE = {
   also: "Video Editor & Motion Designer",
   stats: [
     { value: "1K+", label: "projects delivered" },
-    { value: "1M+", label: "total views" },
+    { value: "70M+", label: "total views" },
     { value: "5+", label: "years editing" },
   ],
 };
@@ -83,7 +83,6 @@ const CREATORS = ["BACHU", "Peach", "Elite Shot", "Dynamo Gaming", "S4sh", "Infe
 
 const CONTACT = [
   { label: "email", value: "vidantforeal@gmail.com", href: "mailto:vidantforeal@gmail.com" },
-  { label: "editing", value: "180hrtz.gg@gmail.com", href: "mailto:180hrtz.gg@gmail.com" },
   { label: "github", value: "github.com/vidanttt", href: "https://github.com/vidanttt" },
   { label: "linkedin", value: "linkedin.com/in/vidaant", href: "https://www.linkedin.com/in/vidaant" },
   { label: "instagram", value: "@180hrtz_", href: "https://www.instagram.com/180hrtz_" },
@@ -393,7 +392,7 @@ export default function DevTerminal({ projects, onOpenProject, className = "" }:
         <pre className="dt-ascii" aria-hidden="true">{`  ╭──────────╮
   │  V    S  │
   │    ◢◣    │
-  │   creative│
+  │ creative │
   ╰──────────╯`}</pre>
         <div>
           <Row>
@@ -417,7 +416,7 @@ export default function DevTerminal({ projects, onOpenProject, className = "" }:
           </Row>
           <Row delay={200}>
             <span className="dt-key">shipped</span>
-            1K+ projects · 1M+ views
+            1K+ projects · 70M+ views
           </Row>
         </div>
       </div>
@@ -494,7 +493,13 @@ export default function DevTerminal({ projects, onOpenProject, className = "" }:
         case "open": {
           const n = parseInt(arg, 10);
           const p = projectList[n - 1];
-          if (!n || !p) {
+          if (p && p.href && p.href === window.location.pathname) {
+            push(
+              <Row>
+                You&apos;re already on <span className="dt-accent">{p.title}</span>.
+              </Row>
+            );
+          } else if (!n || !p) {
             push(
               <Row>
                 <span className="dt-error">usage:</span> open &lt;1-{projectList.length}&gt; <span className="dt-dim">(see</span> <code>projects</code>

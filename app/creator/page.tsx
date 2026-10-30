@@ -18,6 +18,7 @@ import BorderGlow from '@/components/BorderGlow'
 import CircularCarousel from '@/components/CircularCarousel';
 import StatueRelief from '@/components/StatueRelief';
 import AnimatedContent from '@/components/AnimatedContent';
+import { SHOWREELS, REEL_VIDEOS, CREATOR_CHANNELS } from '@/lib/creatorContent';
 
 /* ════════════════════════════════════════════════════
    ABOUT SECTION
@@ -79,7 +80,7 @@ function AboutSection() {
         <div className="hz-about-center">
           <div className="hz-avatar-ring">
             <Image
-              src="/image.png"
+              src="/image.jpg"
               alt="Vidant Avatar"
               width={220}
               height={220}
@@ -142,7 +143,7 @@ function AboutSection() {
             glowRadius={30}
             fillOpacity={0.3}
           >
-            <div className="hz-card hz-card-purple cursor-target" style={{ border: 'none', background: 'transparent' }}>
+            <div className="hz-card hz-card-purple cursor-target" data-selectable style={{ border: 'none', background: 'transparent' }}>
               <h4 style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: '1rem',
@@ -154,13 +155,13 @@ function AboutSection() {
               }}>
                 CONTACT ME
               </h4>
-              <a href="mailto:180hrtz.gg@gmail.com" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
+              <a href="mailto:vidantforeal@gmail.com" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
                 <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                180hrtz.gg@gmail.com
+                vidantforeal@gmail.com
               </a>
-              <a href="#" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
+              <a href="https://www.instagram.com/180hrtz_" target="_blank" rel="noopener noreferrer" className="hz-contact-link cursor-target" style={{ color: '#d0d0d0' }}>
                 <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                   <circle cx="12" cy="12" r="4" />
@@ -168,7 +169,7 @@ function AboutSection() {
                 </svg>
                 @180hrtz_
               </a>
-              <a href="#" className="hz-contact-link cursor-target" style={{ borderBottom: 'none', color: '#d0d0d0' }}>
+              <a href="https://www.youtube.com/@vidaant" target="_blank" rel="noopener noreferrer" className="hz-contact-link cursor-target" style={{ borderBottom: 'none', color: '#d0d0d0' }}>
                 <svg className="hz-contact-icon" style={{ color: 'var(--hz-purple)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58 2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z" />
                   <polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" fill="currentColor" />
@@ -185,98 +186,12 @@ function AboutSection() {
 }
 
 /* ════════════════════════════════════════════════════
-   WORK SECTION
-   ════════════════════════════════════════════════════ */
-function WorkSection() {
-  const projects = [
-    { title: 'CINEMATIC REEL 2025', tag: 'SHOWREEL', num: '01', gradient: 'linear-gradient(135deg,#0f2010,#050f08,#0a121a)' },
-    { title: 'BRAND CAMPAIGN CUT', tag: 'COMMERCIAL', num: '02', gradient: 'linear-gradient(135deg,#0a0a1a,#050508,#0f100a)' },
-    { title: 'MUSIC VIDEO EDIT', tag: 'MUSIC', num: '03', gradient: 'linear-gradient(135deg,#1a0a1a,#0a050f,#0f0a0a)' },
-    { title: 'SHORT-FORM SERIES', tag: 'SOCIAL', num: '04', gradient: 'linear-gradient(135deg,#0a1210,#060f0a,#0a0a14)' },
-    { title: 'DOCUMENTARY CUT', tag: 'LONG-FORM', num: '05', gradient: 'linear-gradient(135deg,#0f1a0a,#080f05,#0a0f14)' },
-    { title: 'MOTION GRAPHICS REEL', tag: 'MOTION', num: '06', gradient: 'linear-gradient(135deg,#0a0f1a,#050810,#100a14)' },
-  ];
-
-  return (
-    <section id="work" className="hz-section">
-      <div className="hz-divider" style={{ marginBottom: '10rem' }} />
-      <AnimatedContent distance={46} blur={8} duration={0.9} stagger={0.12} threshold={0.2} ease="power3.out">
-        <p className="hz-section-label">SELECTED PROJECTS</p>
-        <h2 className="hz-section-heading">MY WORK</h2>
-      </AnimatedContent>
-
-      {/* Showreel placeholder */}
-      <div className="hz-reel-wrapper">
-        <div className="hz-reel-placeholder">
-          <div className="hz-reel-play">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#39FF14">
-              <polygon points="5,3 19,12 5,21" />
-            </svg>
-          </div>
-          <span style={{ letterSpacing: '0.25em', fontSize: '0.8rem' }}>
-            — YOUR SHOWREEL GOES HERE —
-          </span>
-          <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>
-            Drop a YouTube embed URL to activate
-          </span>
-        </div>
-      </div>
-
-      {/* Project grid */}
-      <div className="hz-work-grid">
-        {projects.map((p) => (
-          <div key={p.num} className="hz-project-card cursor-target">
-            <div className="hz-project-card-bg" style={{ background: p.gradient }} />
-            <span className="hz-project-card-num">{p.num}</span>
-
-            {/* Animated lines overlay */}
-            <svg
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.18 }}
-              viewBox="0 0 400 225" preserveAspectRatio="none"
-            >
-              {[0.2, 0.4, 0.6, 0.8].map((y) => (
-                <line key={y} x1="0" y1={y * 225} x2="400" y2={y * 225} stroke="#39FF14" strokeWidth="0.5" />
-              ))}
-              {[0.25, 0.5, 0.75].map((x) => (
-                <line key={x} x1={x * 400} y1="0" x2={x * 400} y2="225" stroke="#39FF14" strokeWidth="0.5" />
-              ))}
-            </svg>
-
-            {/* Waveform placeholder icon */}
-            <div className="hz-project-placeholder-icon">
-              <svg width="80" height="40" viewBox="0 0 80 40" fill="none">
-                {[8, 16, 20, 12, 30, 14, 22, 18, 10, 26, 8, 16].map((h, i) => (
-                  <rect
-                    key={i}
-                    x={i * 6 + 2}
-                    y={(40 - h) / 2}
-                    width="4"
-                    height={h}
-                    rx="2"
-                    fill="#39FF14"
-                  />
-                ))}
-              </svg>
-            </div>
-
-            <div className="hz-project-card-overlay">
-              <p className="hz-project-card-tag">{p.tag}</p>
-              <p className="hz-project-card-title">{p.title}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ════════════════════════════════════════════════════
    SKILLS SECTION — TiltedCard software showcase
    ════════════════════════════════════════════════════ */
 function SkillsSection() {
   const software = [
-    { label: 'After Effects', img: '/ae-card.png', caption: 'Adobe After Effects' },
-    { label: 'Premiere Pro', img: '/pr-card.png', caption: 'Adobe Premiere Pro' },
+    { label: 'After Effects', img: '/ae-card.jpg', caption: 'Adobe After Effects' },
+    { label: 'Premiere Pro', img: '/pr-card.jpg', caption: 'Adobe Premiere Pro' },
     { label: 'DaVinci Resolve', img: '/davinci-card.png', caption: 'DaVinci Resolve' },
     { label: 'Blender', img: '/blender-card.png', caption: 'Blender 3D' },
     { label: 'Photoshop', img: '/ps-card.png', caption: 'Adobe Photoshop' },
@@ -356,14 +271,18 @@ function ContactSection() {
         <AnimatedContent distance={60} blur={8} duration={0.9} stagger={0.12} threshold={0.15} ease="power3.out">
           <h2 className="hz-contact-heading">WANNA CONNECT?</h2>
           <p className="hz-contact-subtext">
-            Drop me a mail and lets connect :)
+            Drop me a mail and let&apos;s connect :)
           </p>
-          <a href="mailto:hello@180hrtz.com" className="hz-contact-email cursor-target">
-            180hrtz.gg@gmail.com
+          <a href="mailto:vidantforeal@gmail.com" className="hz-contact-email cursor-target">
+            vidantforeal@gmail.com
           </a>
           <div className="hz-social-links">
-            {['INSTAGRAM', 'YOUTUBE', 'TWITTER', 'BEHANCE'].map((s) => (
-              <a key={s} href="#" className="hz-social-btn cursor-target">{s}</a>
+            {[
+              { label: 'INSTAGRAM', href: 'https://www.instagram.com/180hrtz_' },
+              { label: 'YOUTUBE', href: 'https://www.youtube.com/@vidaant' },
+              { label: 'X', href: 'https://x.com/vidaaant' },
+            ].map((s) => (
+              <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="hz-social-btn cursor-target">{s.label}</a>
             ))}
           </div>
         </AnimatedContent>
@@ -404,7 +323,7 @@ function ContactSection() {
 
       {/* Footer bar */}
       <div className="hz-footer-bar">
-        <span className="hz-footer-copy">© 2025 VIDAANT — ALL RIGHTS RESERVED</span>
+        <span className="hz-footer-copy">© {new Date().getFullYear()} VIDAANT — ALL RIGHTS RESERVED</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span className="hz-live-dot" />
           <span className="hz-footer-copy">AVAILABLE FOR PROJECTS</span>
@@ -419,23 +338,26 @@ function ContactSection() {
    ════════════════════════════════════════════════════ */
 
 const menuItems = [
-  { label: 'Home', ariaLabel: 'Go to home page', link: '#' },
-  { label: 'About', ariaLabel: 'Learn about us', link: '#about' },
-  { label: 'Work', ariaLabel: 'View our services', link: '#work' },
+  { label: 'Home', ariaLabel: 'Back to the profile screen', link: '/' },
+  { label: 'About', ariaLabel: 'About me', link: '#about' },
+  { label: 'Showreels', ariaLabel: 'Watch the showreels', link: '#video-carousel' },
+  { label: 'Work', ariaLabel: 'Creators I have worked with', link: '#work' },
+  { label: 'Skills', ariaLabel: 'Tools and expertise', link: '#skills' },
+  { label: 'Developer', ariaLabel: 'See the developer side', link: '/developer' },
   { label: 'Contact', ariaLabel: 'Get in touch', link: '#contact' }
 ];
 
 const socialItems = [
-  { label: 'Instagram', link: '#' },
-  { label: 'YouTube', link: '#' },
-  { label: 'Behance', link: '#' }
+  { label: 'Instagram', link: 'https://www.instagram.com/180hrtz_' },
+  { label: 'YouTube', link: 'https://www.youtube.com/@vidaant' },
+  { label: 'X', link: 'https://x.com/vidaaant' }
 ];
 
 const statItems = [
-  { text: '1K+ PROJECTS DELIVERED', image: 'https://picsum.photos/600/400?random=1' },
-  { text: '100M+ TOTAL VIEWS', image: 'https://picsum.photos/600/400?random=2' },
-  { text: '5+ YEARS EXPERIENCE', image: 'https://picsum.photos/600/400?random=3' },
-  { text: 'upcoming TOP Creators', image: 'https://picsum.photos/600/400?random=4' }
+  { text: '1K+ PROJECTS DELIVERED', image: '/stats/1.jpg' },
+  { text: '70M+ TOTAL VIEWS', image: '/stats/2.jpg' },
+  { text: '5+ YEARS EXPERIENCE', image: '/stats/3.jpg' },
+  { text: 'UPCOMING TOP CREATORS', image: '/stats/4.jpg' }
 ];
 
 export default function CreatorPage() {
@@ -659,6 +581,7 @@ export default function CreatorPage() {
         changeMenuColorOnOpen={true}
         colors={['#B497CF', '#5227FF']}
         logoUrl="/hero-statue.png"
+        logoHref="/"
         accentColor="#66ff00ff"
         isFixed={true}
       />
@@ -667,7 +590,14 @@ export default function CreatorPage() {
       {/* ══════════════════════════════════════════════════
           SCROLLABLE PAGE CONTENT
           ══════════════════════════════════════════════════ */}
-      <div className="hz-page" style={{ userSelect: 'none' }} onContextMenu={(e) => e.preventDefault()}>
+      <div
+        className="hz-page"
+        style={{ userSelect: 'none' }}
+        onContextMenu={(e) => {
+          // everything is protected except the contact details, so they can be copied
+          if (!(e.target as HTMLElement).closest('#contact, [data-selectable]')) e.preventDefault();
+        }}
+      >
 
         {/* ────── SECTION 1: HERO ────── */}
         <section id="hero" ref={heroRef} className="hz-hero">
@@ -715,14 +645,7 @@ export default function CreatorPage() {
           <AnimatedContent distance={80} duration={1.1} threshold={0.1} ease="power3.out">
           <div style={{ height: isMobile ? '90vw' : '900px', width: '100%', marginTop: isMobile ? '-1.5rem' : undefined }}>
             <CircularCarousel
-              items={[
-                { src: '/showreels/1.mp4', alt: 'Showreel 1' },
-                { src: '/showreels/2.mp4', alt: 'Showreel 2' },
-                { src: '/showreels/3.mp4', alt: 'Showreel 3' },
-                { src: '/showreels/4.mp4', alt: 'Showreel 4' },
-                { src: '/showreels/5.mp4', alt: 'Showreel 5' },
-                { src: '/showreels/6.mp4', alt: 'Showreel 6' },
-              ]}
+              items={SHOWREELS.map((src, i) => ({ src, alt: `Showreel ${i + 1}` }))}
               cardWidth={800}
               preset="cylinder"
               autoplay="drift"
@@ -752,26 +675,7 @@ export default function CreatorPage() {
         {/* ────── SECTION 3: WORK — Parallax Grid ────── */}
         <div className="hz-divider" style={{ marginBottom: '2rem', marginTop: '4rem', position: 'relative', zIndex: 10 }} />
         <section id="work" style={{ background: 'transparent', position: 'relative', overflowX: 'clip' }}>
-          <HeroParallax channels={[
-            // Row 1
-            { title: 'BACHU', channelUrl: 'https://www.youtube.com/@bachuuuuu' },
-            { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
-            { title: 'Elite Shot', channelUrl: 'https://www.youtube.com/channel/UCi-dlFETsFvri0zSx8zu-iQ' },
-            { title: 'Dynamo Gaming', channelUrl: 'https://www.youtube.com/dynamogaming' },
-            { title: 'S4sh', channelUrl: 'https://www.youtube.com/@s4shhhexe' },
-            // Row 2
-            { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
-            { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
-            { title: 'BACHU', channelUrl: 'https://www.youtube.com/@bachuuuuu' },
-            { title: 'Dynamo Gaming', channelUrl: 'https://www.youtube.com/dynamogaming' },
-            { title: 'S4sh', channelUrl: 'https://www.youtube.com/@s4shhhexe' },
-            // Row 3
-            { title: 'Vibhors Verse', channelUrl: 'https://www.youtube.com/@vibhorsverse8535' },
-            { title: 'Peach', channelUrl: 'https://www.youtube.com/@realpeachgg' },
-            { title: 'Inferno Playz', channelUrl: 'https://www.youtube.com/@_Inferno_playz' },
-            { title: 'S4sh', channelUrl: 'https://www.youtube.com/@s4shhhexe' },
-            { title: 'Dynamo Gaming', channelUrl: 'https://www.youtube.com/dynamogaming' },
-          ]} />
+          <HeroParallax channels={CREATOR_CHANNELS} />
         </section>
 
         {/* ────── SECTION 3.5: REEL CAROUSEL ────── */}
@@ -782,13 +686,7 @@ export default function CreatorPage() {
             <h2 className="hz-section-heading">SELECTED WORK</h2>
           </AnimatedContent>
           <AnimatedContent distance={80} blur={8} duration={1} threshold={0.12} ease="power3.out">
-          <ReelCarousel videos={[
-            'https://res.cloudinary.com/dpuovefvs/video/upload/v1792092415/snapgram.io_1zescuajntue_af5in7.mp4',
-            'https://res.cloudinary.com/dpuovefvs/video/upload/v1792092553/snapgram.io_3f15uv2e9h7q_nb2uta.mp4',
-            'https://res.cloudinary.com/dpuovefvs/video/upload/v1792094480/vidssave.com_paypal_or_people__valorant_valorantindia_gamergirl_valorantclips_valorantmoments_gaming_720P_simngj.mp4',
-            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777233966/vid1_nc11bz.mp4',
-            'https://res.cloudinary.com/dpuovefvs/video/upload/q_auto/f_auto/v1777234062/vid6_usi9t4.mp4'
-          ]} />
+          <ReelCarousel videos={REEL_VIDEOS} />
           </AnimatedContent>
         </section>
 

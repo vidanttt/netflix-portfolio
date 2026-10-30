@@ -2,7 +2,6 @@
 
 import { memo, useState, useEffect, useCallback, useMemo, useRef, type ComponentProps } from 'react';
 import { useRouter } from 'next/navigation';
-import ProfileCard from './components/ProfileCard';
 import NetflixLoader from './components/NetflixLoader';
 import { track } from '@/lib/track';
 import ParticleText from '@/components/ParticleText';
@@ -728,7 +727,7 @@ export default function Home() {
   // click while aiming at a profile or the Bored button opens it
   useEffect(() => {
     if (!fps || openDoor >= 0 || tabletOpen) return undefined;
-    const use = () => {
+    const activate = () => {
       // the click that recaptures the mouse shouldn't also open whatever is under the crosshair
       if (lockWorks.current && !document.pointerLockElement) return;
       const benchItem = benchAim.current;
@@ -761,10 +760,10 @@ export default function Home() {
       }
     };
     const onDown = (event: PointerEvent) => {
-      if (event.button === 0 && !arsenal.armed) use();
+      if (event.button === 0 && !arsenal.armed) activate();
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.code === 'KeyE' && !event.repeat) use();
+      if (event.code === 'KeyE' && !event.repeat) activate();
     };
     window.addEventListener('pointerdown', onDown);
     window.addEventListener('keydown', onKey);
@@ -884,17 +883,6 @@ export default function Home() {
   // Check if this is the first visit in this session
   useEffect(() => {
     setLoader(sessionStorage.getItem('netflixLoaderSeen') ? 'done' : 'show');
-
-    // Add secret key combination to reset loader (Ctrl+Shift+R)
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
-        e.preventDefault();
-        resetLoaderState();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const handleLoaderComplete = () => {
@@ -937,13 +925,6 @@ export default function Home() {
       if (profile) handleProfileSelect(profile);
     },
     bored: () => handleBoredSelect(),
-  };
-
-  // Function to reset loader state (for testing purposes)
-  const resetLoaderState = () => {
-    sessionStorage.removeItem('netflixLoaderSeen');
-    document.documentElement.removeAttribute('data-intro-seen');
-    setLoader('show');
   };
 
   return (
@@ -1155,7 +1136,7 @@ export default function Home() {
 
         {/* Who's watching heading */}
         <div ref={headingLayer} style={{ willChange: 'transform' }}>
-          <h2
+          <h1
             ref={h2Ref}
             aria-label="Who's Watching?"
             className="text-white mb-10 md:mb-14 animate-fade-in-up opacity-0 h-[120px] md:h-[160px] w-full"
@@ -1184,7 +1165,7 @@ export default function Home() {
               fontFamily="inherit"
               glow
             />
-          </h2>
+          </h1>
         </div>
 
         {/* Profiles Accordion */}
@@ -1199,6 +1180,15 @@ export default function Home() {
               key={profile.id}
               className="profile-item"
               data-profile-id={profile.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open the ${profile.name} profile`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleProfileSelect(profile);
+                }
+              }}
               style={{ ['--glow' as string]: profile.glow }}
               onMouseEnter={() => setHoveredId(profile.id)}
               onMouseLeave={() => setHoveredId((id) => (id === profile.id ? null : id))}

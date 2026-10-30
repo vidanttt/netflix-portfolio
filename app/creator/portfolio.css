@@ -564,140 +564,6 @@
 }
 
 /* ============================
-   WORK SECTION
-   ============================ */
-.hz-work-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
-}
-
-@media (max-width: 900px) {
-  .hz-work-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 600px) {
-  .hz-work-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.hz-project-card {
-  position: relative;
-  border-radius: 4px;
-  overflow: hidden;
-  aspect-ratio: 16/9;
-  cursor: pointer;
-  border: 1px solid var(--hz-card-border);
-  background: var(--hz-dark);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.hz-project-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 0 30px rgba(57, 255, 20, 0.2), 0 16px 40px rgba(0, 0, 0, 0.5);
-  border-color: var(--hz-green);
-}
-
-.hz-project-card-bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #0a1a0a, #050f08, #0a0a12);
-}
-
-.hz-project-card-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 50%);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 1.2rem;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.hz-project-card:hover .hz-project-card-overlay {
-  opacity: 1;
-}
-
-.hz-project-card-tag {
-  font-family: var(--font-display);
-  font-size: 0.65rem;
-  letter-spacing: 0.3em;
-  color: var(--hz-green);
-  text-transform: uppercase;
-  margin-bottom: 0.3rem;
-}
-
-.hz-project-card-title {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  letter-spacing: 0.08em;
-  color: #fff;
-}
-
-.hz-project-card-num {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  font-family: var(--font-display);
-  font-size: 2.5rem;
-  color: rgba(57, 255, 20, 0.08);
-  line-height: 1;
-  pointer-events: none;
-}
-
-.hz-project-placeholder-icon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.3;
-}
-
-/* ── Reel embed ── */
-.hz-reel-wrapper {
-  position: relative;
-  padding-bottom: 56.25%;
-  height: 0;
-  border: 1px solid var(--hz-card-border);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 2.5rem;
-  background: var(--hz-dark);
-}
-
-.hz-reel-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  color: var(--hz-text-dim);
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  letter-spacing: 0.1em;
-  border: 1px dashed rgba(57, 255, 20, 0.2);
-}
-
-.hz-reel-play {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 2px solid var(--hz-green);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 20px var(--hz-green-glow);
-  animation: hz-pulse-ring 2.5s ease-in-out infinite;
-}
-
-/* ============================
    SKILLS SECTION
    ============================ */
 .hz-skills-grid {
@@ -868,6 +734,8 @@
   border-top: 1px solid rgba(57, 255, 20, 0.1);
   margin-top: 4rem;
   padding-top: 2rem;
+  /* leaves room for the floating music player in the corner */
+  padding-right: 6.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1010,10 +878,11 @@
    SKILLS CARDS GRID
    ============================ */
 .hz-skills-cards-grid {
-  display: flex;
+  /* all five cards share one row and shrink (up to 300px each) to fit it */
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 300px));
   justify-content: center;
   gap: 2rem;
-  flex-wrap: wrap;
   margin-bottom: 4rem;
 }
 
@@ -1022,8 +891,23 @@
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  width: 300px;
-  height: 300px;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+/* too narrow for five in a row: wrap them, centred */
+@media (max-width: 1000px) {
+  .hz-skills-cards-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+  .hz-skill-card-item {
+    width: 200px;
+    height: 200px;
+    aspect-ratio: auto;
+  }
 }
 
 /* ============================
@@ -1156,6 +1040,8 @@
     gap: 0.75rem;
     text-align: center;
     margin-top: 2.5rem;
+    padding-right: 0;
+    padding-bottom: 5rem;
   }
 
   .hz-footer-copy {
@@ -1175,3 +1061,13 @@
     background-position: -200% 0;
   }
 }
+/* the rest of the site blocks text selection (globals.css); the contact details can be copied */
+#contact, #contact *, [data-selectable], [data-selectable] * {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+/* seven menu entries, some of them long words: a little smaller so none is cut off */
+.sm-panel-item { font-size: 3.1rem !important; padding-right: 5.6rem !important; /* keeps the 01-07 numbers clear of the word */ }
+@media (max-width: 480px) { .sm-panel-item { font-size: 2.6rem !important; } }

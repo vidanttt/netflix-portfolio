@@ -43,8 +43,17 @@ function buildMagnifyMap(size: number, scale: number): string {
 
 const MAG_SCALE = 60;
 
-export default function GlassBlob({ size = 200 }: { size?: number }) {
+export default function GlassBlob({
+  size = 200,
+  start,
+}: {
+  size?: number;
+  /** where it rests first (px, from the top-left of the window); defaults to the middle-right */
+  start?: (width: number, height: number, size: number) => { x: number; y: number };
+}) {
   const ref = useRef<HTMLDivElement>(null);
+  const startRef = useRef(start);
+  startRef.current = start;
   const [maps, setMaps] = useState<{ bezel: string; magnify: string } | null>(null);
 
   useEffect(() => {
@@ -65,7 +74,8 @@ export default function GlassBlob({ size = 200 }: { size?: number }) {
     const lo = 8;
 
     // position + velocity (px, px/s) and the pointer target
-    const p = { x: W() * 0.62 - size / 2, y: H() * 0.5 - size / 2, vx: 0, vy: 0 };
+    const first = startRef.current?.(W(), H(), size) ?? { x: W() * 0.62 - size / 2, y: H() * 0.5 - size / 2 };
+    const p = { x: Math.max(lo, first.x), y: Math.max(lo, first.y), vx: 0, vy: 0 };
     const target = { x: p.x, y: p.y };
     // jelly: stretch along travel direction, press pop, both on springs
     const j = { stretch: 1, vs: 0, pop: 1, vp: 0, dirX: 1, dirY: 0 };
