@@ -40,7 +40,7 @@ Create `.env.local` (never commit it):
 | `MONGODB_URI` | Bored: watchlist and watch history |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Sign-in (use live keys in production) |
 | `NEXT_PUBLIC_ADMIN_EMAIL`, `ADMIN_EMAIL` | Who can open the Bored admin page |
-| `NEXT_PUBLIC_SITE_URL` | Optional: the public address used by `robots.txt` and `sitemap.xml`. On Vercel the production domain is picked up automatically |
+| `NEXT_PUBLIC_SITE_URL` | Optional: overrides the address used by `robots.txt` and `sitemap.xml` (defaults to https://vidant.tech) |
 
 ## Deploying
 

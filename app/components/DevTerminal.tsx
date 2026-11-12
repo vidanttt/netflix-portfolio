@@ -34,7 +34,12 @@ interface DevTerminalProps {
 
 type Block =
   | { id: string; kind: "input"; text: string }
-  | { id: string; kind: "node"; node: ReactNode };
+  | { id: string; kind: "node"; node: ReactNode }
+  | { id: string; kind: "ai"; question: string };
+
+/** one message of the conversation with the assistant (the format /api/ask takes) */
+type Turn = { role: "user" | "model"; text: string };
+const MEMORY = 8; // messages of earlier conversation sent along with a question
 
 const PROMPT_USER = "vidant";
 const PROMPT_HOST = "creative-dev";
@@ -97,6 +102,7 @@ const COMMAND_LIST: { cmd: string; hint: string }[] = [
   { cmd: "neofetch", hint: "system card" },
   { cmd: "theme dark|light", hint: "switch look" },
   { cmd: "clear", hint: "clear the screen" },
+  { cmd: "anything else", hint: "ask the AI assistant about Vidant" },
 ];
 
 const QUICK = ["about", "projects", "skills", "experience", "contact"];
@@ -243,6 +249,76 @@ function Streamed({
   return <div ref={ref}>{children}</div>;
 }
 
+/* ── AI reply ────────────────────────────────────────────────────────────
+   Anything that isn't a command goes to the assistant (app/api/ask), whose answer streams in
+   as plain text. A successful exchange is added to the conversation memory. */
+function AiReply({
+  question,
+  memory,
+  onTick,
+  onDone,
+}: {
+  question: string;
+  memory: { current: Turn[] };
+  onTick: () => void;
+  onDone: () => void;
+}) {
+  const [answer, setAnswer] = useState("");
+  const [state, setState] = useState<"thinking" | "streaming" | "done" | "error">("thinking");
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current) return; // once, even when React runs effects twice in development
+    started.current = true;
+    (async () => {
+      const messages: Turn[] = [...memory.current, { role: "user" as const, text: question }].slice(-(MEMORY + 1));
+      let full = "";
+      try {
+        const res = await fetch("/api/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages }),
+        });
+        if (res.body) {
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            full += decoder.decode(value, { stream: true });
+            setAnswer(full);
+            setState("streaming");
+            onTick();
+          }
+        }
+        full = full.trim();
+        if (res.ok && full) {
+          memory.current = [...memory.current, { role: "user" as const, text: question }, { role: "model" as const, text: full }].slice(-MEMORY);
+          setState("done");
+        } else {
+          setAnswer(full || "The assistant couldn't answer that. Try again.");
+          setState("error");
+        }
+      } catch {
+        setAnswer("The assistant couldn't be reached. Check your connection and try again.");
+        setState("error");
+      } finally {
+        onDone();
+        onTick();
+      }
+    })();
+    // the question is fixed for this reply
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className={`dt-row dt-answer${state === "error" ? " dt-dim" : ""}`}>
+      {state === "thinking" ? "" : answer}
+      {(state === "thinking" || state === "streaming") && <span className="dt-caret" aria-hidden="true" />}
+    </div>
+  );
+}
+
 /* ── Component ───────────────────────────────────────────────────────── */
 export default function DevTerminal({ projects, onOpenProject, className = "" }: DevTerminalProps) {
   const router = useRouter();
@@ -254,6 +330,8 @@ export default function DevTerminal({ projects, onOpenProject, className = "" }:
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  // what the assistant remembers of this conversation
+  const memory = useRef<Turn[]>([]);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -389,11 +467,13 @@ export default function DevTerminal({ projects, onOpenProject, className = "" }:
 
     const neofetch = (): ReactNode => (
       <div className="dt-fetch">
-        <pre className="dt-ascii" aria-hidden="true">{`  ╭──────────╮
-  │  V    S  │
-  │    ◢◣    │
-  │ creative │
-  ╰──────────╯`}</pre>
+        <pre className="dt-ascii" aria-hidden="true">{`    /\\_______/\\
+   /  o     o  \\
+  (      ^      )
+   \\   \\___/   /
+    \`-._____.-'
+     /|/ | \\|\\
+      octocat`}</pre>
         <div>
           <Row>
             <span className="dt-accent">{PROMPT_USER}</span>@<span className="dt-accent">{PROMPT_HOST}</span>
@@ -459,6 +539,7 @@ export default function DevTerminal({ projects, onOpenProject, className = "" }:
         case "clear":
         case "cls":
           setBlocks([]);
+          memory.current = [];
           setBusy(false);
           break;
         case "help":
@@ -542,11 +623,8 @@ export default function DevTerminal({ projects, onOpenProject, className = "" }:
           );
           break;
         default:
-          push(
-            <Row>
-              <span className="dt-error">command not found:</span> {input} <span className="dt-dim">— try</span> <code>help</code>
-            </Row>
-          );
+          // not a command: ask the AI assistant
+          setBlocks((prev) => [...prev, { id: uid(), kind: "ai", question: input }]);
       }
     },
     [out, projectList, onOpenProject, push, router, finishNow]
@@ -562,7 +640,7 @@ export default function DevTerminal({ projects, onOpenProject, className = "" }:
           <span className="dt-dim">Last login: today on ttys001</span>
         </Row>
         <Row delay={60}>
-          Welcome. Type <code>help</code> or tap a command below.
+          Welcome. Type <code>help</code>, tap a command below, or just ask me anything about Vidant.
         </Row>
       </>
     );
@@ -646,6 +724,10 @@ export default function DevTerminal({ projects, onOpenProject, className = "" }:
                 <b>{PROMPT_HOST}</b> <span className="dt-dim">~</span> <span className="dt-sigil">%</span>
               </span>{" "}
               <span>{b.text}</span>
+            </div>
+          ) : b.kind === "ai" ? (
+            <div key={b.id} className="dt-output">
+              <AiReply question={b.question} memory={memory} onTick={keepInView} onDone={() => setBusy(false)} />
             </div>
           ) : (
             <div key={b.id} className="dt-output">

@@ -298,3 +298,6 @@ html .glass-blob[data-refract] {
   .dv-stats { justify-content: flex-start; }
   .dv-hint { bottom: auto; top: calc(min(62vh, 520px) - 1.8rem); }
 }
+
+/* assistant replies: read like the terminal's own output */
+.dt-answer { white-space: pre-wrap; line-height: 1.6; max-width: 62ch; }
