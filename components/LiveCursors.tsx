@@ -9,7 +9,7 @@ import PartySocket from 'partysocket';
  * fractions of the window, so a cursor lands in the same relative spot on every screen.
  */
 const HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST;
-const SEND_EVERY_MS = 50;
+const SEND_EVERY_MS = 100; // ~10 updates a second: gentle on the free plan's daily request allowance
 const MAX_SHOWN = 30;
 
 type Peer = { el: HTMLDivElement; x: number; y: number; tx: number; ty: number };

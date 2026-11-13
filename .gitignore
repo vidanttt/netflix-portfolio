@@ -56,5 +56,6 @@ next-env.d.ts
 # helper zips
 /*.zip
 
-# partykit local state
-/.partykit/
+
+# wrangler local state
+/.wrangler/

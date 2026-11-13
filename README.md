@@ -42,7 +42,7 @@ Create `.env.local` (never commit it):
 | `NEXT_PUBLIC_ADMIN_EMAIL`, `ADMIN_EMAIL` | Who can open the Bored admin page |
 | `NEXT_PUBLIC_SITE_URL` | Optional: overrides the address used by `robots.txt` and `sitemap.xml` (defaults to https://vidant.tech) |
 | `GEMINI_API_KEY` | The developer terminal's AI assistant (free Gemini tier) |
-| `NEXT_PUBLIC_PARTYKIT_HOST` | Live cursors on the home screen: the host printed by `npx partykit deploy` |
+| `NEXT_PUBLIC_PARTYKIT_HOST` | Live cursors on the home screen: the host printed by `npx wrangler deploy` (the cursor server in `party/`, Cloudflare free plan) |
 
 ## Deploying
 

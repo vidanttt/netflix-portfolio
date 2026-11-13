@@ -1,0 +1,13 @@
+{
+  // Live cursors server (party/cursors.ts) on Cloudflare Workers, free plan.
+  // Deploy with `npx wrangler deploy`. The Next.js site is NOT deployed from here (Vercel does that).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vidaant-cursors",
+  "main": "party/cursors.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "Main", "class_name": "Cursors" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Cursors"] }]
+}
