@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { RoomCamera } from '@/components/GridScan';
+import { POSTER_W, POSTER_H, POSTER_Y } from '@/components/GridScan';
 import type { DoorTheme } from '@/app/roomDoors';
 import { portalFrames, PORTAL_FRAMES } from './portalFrames';
 
@@ -19,7 +20,18 @@ import { portalFrames, PORTAL_FRAMES } from './portalFrames';
  *
  * Drawn with the room's camera on a transparent canvas between the room and its panels.
  */
-export type DoorSpot = { side: number; z: number; theme: DoorTheme; color: string; portal: boolean };
+export type DoorSpot = {
+  side: number;
+  z: number;
+  theme: DoorTheme;
+  color: string;
+  portal: boolean;
+  /** hangs on the wall as a framed poster instead of standing as a door */
+  poster?: boolean;
+  title?: string;
+  tag?: string;
+  image?: string;
+};
 export type DoorsApi = {
   update: (
     cam: RoomCamera,
@@ -378,6 +390,82 @@ const STYLES: Record<DoorTheme, Style> = {
   contact: { count: 18, square: false, colors: ['#fde68a', '#fbbf24', '#fff7d6'], size: [0.004, 0.009], life: [3, 5], boost: 1.1, spawn: (p) => fromDoor(p, [0.002, 0.018], [0.02, 0.04]) },
 };
 
+/* ── posters ────────────────────────────────────────────────────────── */
+const POSTER_PX: [number, number] = [540, 800];
+
+/** Paint a film-style poster: the project's screenshot (or its colour, if it has none), a fade to
+ *  black at the foot, and the tag and title set over it. */
+function paintPoster(ctx: CanvasRenderingContext2D, spot: DoorSpot, img: HTMLImageElement | null) {
+  const [W, H] = POSTER_PX;
+  const accent = spot.color;
+  ctx.fillStyle = '#08080a';
+  ctx.fillRect(0, 0, W, H);
+  if (img) {
+    // cover, anchored to the top of the page
+    const k = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+    const w = img.naturalWidth * k;
+    ctx.drawImage(img, (W - w) / 2, 0, w, img.naturalHeight * k);
+  } else {
+    const glow = ctx.createRadialGradient(W * 0.5, H * 0.34, 10, W * 0.5, H * 0.34, H * 0.62);
+    glow.addColorStop(0, accent);
+    glow.addColorStop(0.55, '#16161a');
+    glow.addColorStop(1, '#060608');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+    // the title again, huge and cut off by the frame
+    ctx.save();
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 250px "Helvetica Neue", Arial, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText((spot.title || '').replace(/^@/, '').slice(0, 3).toUpperCase(), -14, H * 0.34);
+    ctx.restore();
+  }
+  const fade = ctx.createLinearGradient(0, H * 0.46, 0, H);
+  fade.addColorStop(0, 'rgba(6,6,8,0)');
+  fade.addColorStop(0.5, 'rgba(6,6,8,0.86)');
+  fade.addColorStop(1, 'rgba(6,6,8,0.98)');
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, H * 0.46, W, H * 0.54);
+
+  const pad = 40;
+  ctx.textBaseline = 'alphabetic';
+  // title, wrapped to at most three lines and sized to fit
+  const title = spot.title || '';
+  let size = 76;
+  let lines: string[] = [];
+  for (; size >= 40; size -= 4) {
+    ctx.font = `800 ${size}px "Helvetica Neue", Arial, sans-serif`;
+    lines = [];
+    let line = '';
+    for (const word of title.split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(next).width > W - pad * 2) {
+        lines.push(line);
+        line = word;
+      } else line = next;
+    }
+    lines.push(line);
+    if (lines.length <= 3 && lines.every((l) => ctx.measureText(l).width <= W - pad * 2)) break;
+  }
+  const lead = size * 1.04;
+  let y = H - 78 - (lines.length - 1) * lead;
+  // tag above the title
+  ctx.fillStyle = accent;
+  ctx.fillRect(pad, y - size - 34, 46, 5);
+  ctx.font = '700 22px "Helvetica Neue", Arial, sans-serif';
+  ctx.fillText((spot.tag || '').toUpperCase().split('').join(' '), pad + 60, y - size - 25);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `800 ${size}px "Helvetica Neue", Arial, sans-serif`;
+  for (const l of lines) {
+    ctx.fillText(l, pad, y);
+    y += lead;
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '600 19px "Helvetica Neue", Arial, sans-serif';
+  ctx.fillText('AIM  +  CLICK  TO  OPEN', pad, H - 34);
+}
+
 type Rig = {
   spot: DoorSpot;
   root: THREE.Group;
@@ -392,6 +480,9 @@ type Rig = {
   leaves: THREE.Mesh[];
   shared?: Record<string, THREE.IUniform>;
   neon?: THREE.MeshStandardMaterial;
+  /** a poster's print and the group that leans out of the wall when it's aimed at */
+  print?: THREE.MeshBasicMaterial;
+  hang?: THREE.Group;
   halo: THREE.ShaderMaterial;
   mats: THREE.Material[];
   glow: number;
@@ -464,6 +555,7 @@ const DoorsLayer = forwardRef<DoorsApi>(function DoorsLayer(_props, ref) {
     let portalFrame = -1;
 
     const geos: THREE.BufferGeometry[] = [];
+    const textures: THREE.Texture[] = [];
     const geo = <T extends THREE.BufferGeometry>(g: T) => {
       geos.push(g);
       return g;
@@ -513,9 +605,62 @@ const DoorsLayer = forwardRef<DoorsApi>(function DoorsLayer(_props, ref) {
         const haloMesh = new THREE.Mesh(geo(new THREE.PlaneGeometry(haloSize.x, haloSize.y)), halo);
         haloMesh.position.set(0, haloSize.y / 2 - 0.0, 0.0008);
         haloMesh.renderOrder = -1;
-        root.add(haloMesh);
+        if (!spot.poster) root.add(haloMesh);
 
-        if (spot.portal) {
+        let print: THREE.MeshBasicMaterial | undefined;
+        let hang: THREE.Group | undefined;
+        if (spot.poster) {
+          // a framed print hung at eye level, with a picture light over it
+          hang = new THREE.Group();
+          hang.position.set(0, POSTER_Y + POSTER_H / 2, 0);
+          root.add(hang);
+          const cv = document.createElement('canvas');
+          [cv.width, cv.height] = POSTER_PX;
+          const cx = cv.getContext('2d')!;
+          paintPoster(cx, spot, null);
+          const tex = new THREE.CanvasTexture(cv);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = 8;
+          textures.push(tex);
+          if (spot.image) {
+            const img = new Image();
+            img.onload = () => {
+              paintPoster(cx, spot, img);
+              tex.needsUpdate = true;
+            };
+            img.src = spot.image;
+          }
+          print = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+          mats.push(print);
+          const sheet = new THREE.Mesh(geo(new THREE.PlaneGeometry(POSTER_W, POSTER_H)), print);
+          sheet.position.z = 0.012;
+          hang.add(sheet);
+          // frame: four slim bars, standing proud of the wall
+          const t = 0.011;
+          const d = 0.018;
+          const side = geo(new RoundedBoxGeometry(t, POSTER_H + 2 * t, d, 2, 0.003));
+          const rail = geo(new RoundedBoxGeometry(POSTER_W + 2 * t, t, d, 2, 0.003));
+          for (const sx of [-1, 1]) {
+            const m = new THREE.Mesh(side, metal);
+            m.position.set(sx * (POSTER_W / 2 + t / 2), 0, d / 2);
+            hang.add(m);
+            const r = new THREE.Mesh(rail, metal);
+            r.position.set(0, sx * (POSTER_H / 2 + t / 2), d / 2);
+            hang.add(r);
+          }
+          // the picture light: an arm out of the wall and a warm tube along it
+          const arm = new THREE.Mesh(geo(new THREE.BoxGeometry(0.008, 0.008, 0.05)), metal);
+          arm.position.set(0, POSTER_H / 2 + 0.05, 0.025);
+          hang.add(arm);
+          const shade = new THREE.Mesh(geo(new RoundedBoxGeometry(POSTER_W * 0.62, 0.014, 0.022, 2, 0.005)), metal);
+          shade.position.set(0, POSTER_H / 2 + 0.05, 0.052);
+          hang.add(shade);
+          neon = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0xfff0d8).lerp(accent, 0.25), emissiveIntensity: 2.4, toneMapped: false });
+          mats.push(neon);
+          const lamp = new THREE.Mesh(geo(new THREE.BoxGeometry(POSTER_W * 0.56, 0.003, 0.012)), neon);
+          lamp.position.set(0, POSTER_H / 2 + 0.042, 0.052);
+          hang.add(lamp);
+        } else if (spot.portal) {
           // obsidian: a 4 x 7 frame of blocks round a 2 x 5 opening
           const blocks: [number, number][] = [];
           for (let i = 0; i < 4; i++) blocks.push([i, 0], [i, 6]);
@@ -590,7 +735,7 @@ const DoorsLayer = forwardRef<DoorsApi>(function DoorsLayer(_props, ref) {
 
         // particles
         const style = STYLES[spot.theme];
-        const n = style.count;
+        const n = spot.poster ? 0 : style.count; // posters are still: no particles
         const pos = new Float32Array(n * 3);
         const col = new Float32Array(n * 3);
         const size = new Float32Array(n);
@@ -623,7 +768,7 @@ const DoorsLayer = forwardRef<DoorsApi>(function DoorsLayer(_props, ref) {
         root.traverse((o) => {
           o.frustumCulled = false;
         });
-        rigs.push({ spot, root, style, particles, points, pos, col, size, alpha, pointsMat, leaves, shared, neon, halo, mats, glow: 0, open: 0 });
+        rigs.push({ spot, root, style, particles, points, pos, col, size, alpha, pointsMat, leaves, shared, neon, print, hang, halo, mats, glow: 0, open: 0 });
       }
     };
 
@@ -637,7 +782,7 @@ const DoorsLayer = forwardRef<DoorsApi>(function DoorsLayer(_props, ref) {
         }
         canvas.style.display = '';
         canvas.style.clipPath = opts.clip ?? '';
-        const sig = opts.doors.map((d) => `${d.theme}${d.side}${d.z}${d.color}`).join('|');
+        const sig = opts.doors.map((d) => `${d.theme}${d.side}${d.z}${d.color}${d.title ?? ''}${d.image ?? ''}`).join('|');
         if (sig !== built) {
           build(opts.doors);
           built = sig;
@@ -679,7 +824,13 @@ const DoorsLayer = forwardRef<DoorsApi>(function DoorsLayer(_props, ref) {
               leaf.position.x = side * (DOOR_W * 0.25 + r.open * DOOR_W * 0.5);
             });
           }
-          if (r.neon) r.neon.emissiveIntensity = (2.2 + 0.6 * Math.sin(time * 1.6 + i) + r.glow * 2.5) * dim;
+          if (r.print && r.hang) {
+            // aimed at: the print brightens and leans a touch out of the wall
+            r.print.color.setScalar((0.8 + 0.2 * r.glow) * (opts.lights ? 1 : 0.75));
+            r.hang.position.z = r.glow * 0.012;
+            r.hang.scale.setScalar(1 + r.glow * 0.025);
+            if (r.neon) r.neon.emissiveIntensity = (2.0 + r.glow * 2.2) * dim;
+          } else if (r.neon) r.neon.emissiveIntensity = (2.2 + 0.6 * Math.sin(time * 1.6 + i) + r.glow * 2.5) * dim;
           r.halo.uniforms.uTime.value = time + i;
           r.halo.uniforms.uGlow.value = r.glow + r.open;
           // particles
@@ -728,6 +879,7 @@ const DoorsLayer = forwardRef<DoorsApi>(function DoorsLayer(_props, ref) {
       apiRef.current = null;
       clear();
       for (const g of geos) g.dispose();
+      for (const t of textures) t.dispose();
       [metal, metalDark, obsidian, portalMat].forEach((m) => m.dispose());
       obsidian.map?.dispose();
       portalTex.dispose();

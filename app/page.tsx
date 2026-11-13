@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import NetflixLoader from './components/NetflixLoader';
 import { track } from '@/lib/track';
 import ParticleText from '@/components/ParticleText';
+import LiveCursors from '@/components/LiveCursors';
 import type { RoomCamera, RoomControl } from '@/components/GridScan';
 import GridScan, { lockPointer, TRAIN_FRONT, TRAIN_GAP_H, TRAIN_GAP_HALF } from '@/components/GridScan';
 import WeaponView, { type WeaponViewApi } from './components/room/WeaponView';
@@ -175,6 +176,15 @@ export default function Home() {
   const textWidth = useRef(480);
   // first-person walk through the grid room
   const [fps, setFps] = useState(false);
+  // phones: the heading is set smaller, in finer dots, so it stays readable
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
   const roomCanvas = () => document.querySelector<HTMLCanvasElement>('canvas[data-gridscan]');
   const enterRoom = () => {
     // pointer lock (and sound) have to be asked for inside the click itself
@@ -409,7 +419,7 @@ export default function Home() {
     const half = (0.5 * W) / H;
     doorSpots.forEach((spot, i) => {
       const el = signs[i];
-      if (!el) return;
+      if (!el) return; // posters carry their own title: only the portal has a sign
       const P = [spot.side * (half - 0.003), -0.5 + DOOR_HEIGHT + 0.115, spot.z];
       const ax = spot.side < 0 ? [0, 0, 1] : [0, 0, -1];
       const az = [-spot.side, 0, 0];
@@ -523,7 +533,7 @@ export default function Home() {
       if (target?.dataset.label) label = target.dataset.label;
       else if (target) label = target.dataset.profileId ? `Open ${target.dataset.profileId}` : 'Are you bored?';
       else if (cam.aimDoor >= 0)
-        label = ROOM_DOORS[cam.aimDoor]?.theme === 'portal' ? 'Walk into the portal' : `Enter · ${ROOM_DOORS[cam.aimDoor]?.title ?? ''}`;
+        label = ROOM_DOORS[cam.aimDoor]?.theme === 'portal' ? 'Walk into the portal' : `View · ${ROOM_DOORS[cam.aimDoor]?.title ?? ''}`;
     } else {
       setAim(null);
     }
@@ -687,7 +697,7 @@ export default function Home() {
     window.setTimeout(() => {
       if (document.pointerLockElement) document.exitPointerLock();
     }, 30);
-    window.setTimeout(() => setDoorCard(i), 650);
+    window.setTimeout(() => setDoorCard(i), 180);
   }, []);
 
   const closeDoor = () => {
@@ -755,7 +765,7 @@ export default function Home() {
           enterPortal.current(aimDoor.current);
           return;
         }
-        playDoor(true);
+        playClick(1.2);
         enterDoor(aimDoor.current);
       }
     };
@@ -934,6 +944,8 @@ export default function Home() {
         in the layout hides that cover at once for visits that have already seen it) */}
     {loader === 'pending' && <div className="intro-cover" aria-hidden="true" />}
     {loader === 'show' && <NetflixLoader onComplete={handleLoaderComplete} />}
+    {/* other visitors' cursors, live (hidden during the intro and in first person) */}
+    {!showLoader && <LiveCursors paused={fps} />}
     <div
       className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden"
       style={{ backgroundColor: '#141414' }}
@@ -1103,7 +1115,7 @@ export default function Home() {
         </div>
 
         {/* signs above the doors in first person */}
-        {ROOM_DOORS.map((door, i) => (
+        {ROOM_DOORS.map((door, i) => door.theme !== 'portal' ? null : (
           <div
             key={door.id}
             ref={(el) => {
@@ -1144,8 +1156,8 @@ export default function Home() {
           >
             <ParticleText
               text="Who's Watching?"
-              particleSize={2}
-              density={4}
+              particleSize={narrow ? 1.15 : 2}
+              density={narrow ? 2 : 4}
               color="currentColor"
               highlightColor="#e50914"
               highlightMode="motion"
@@ -1156,11 +1168,11 @@ export default function Home() {
               stagger={420}
               clickBurst
               burstStrength={1}
-              pointerRepel={40}
-              repelRadius={120}
+              pointerRepel={narrow ? 26 : 40}
+              repelRadius={narrow ? 70 : 120}
               idleDrift={0.7}
               trigger="mount"
-              fontSize="clamp(3rem, 9vw, 5.75rem)"
+              fontSize={narrow ? "clamp(1.9rem, 9.4vw, 3rem)" : "clamp(3rem, 9vw, 5.75rem)"}
               fontWeight={800}
               fontFamily="inherit"
               glow

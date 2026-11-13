@@ -158,7 +158,7 @@ type Settings = {
   fps: boolean;
   /** `color` (hex) tints a door's frame, seams and light; a `portal` is drawn by the page's
    *  door layer, so the room only adds its glow round the frame and on the floor */
-  doors: { side: number; z: number; color?: string; portal?: boolean; dressed?: boolean }[];
+  doors: { side: number; z: number; color?: string; portal?: boolean; dressed?: boolean; poster?: boolean }[];
   openDoor: number;
   paused: boolean;
   lookPaused: boolean;
@@ -209,7 +209,7 @@ const FPS_FOV = 0.62; // tan of half the vertical field of view
 const FPS_SENS = 0.0022;
 const FPS_TURN = 2.2; // arrow-key turn speed, radians per second
 const FPS_BLEND_SECONDS = 1.15;
-const MAX_DOORS = 8;
+const MAX_DOORS = 10;
 /** The training range: a second room behind the spawn wall, reached through an open doorway. */
 export const TRAIN_FRONT = -1; // the shared wall (= FPS_FRONT)
 export const TRAIN_BACK = -4.2;
@@ -222,6 +222,10 @@ const MAX_IMPACTS = 16;
 const IMPACT_LIFE = 6;
 const DOOR_W = 0.34;
 const DOOR_H = 0.62;
+/** A framed poster on a side wall: width, height, and how far its bottom edge is above the floor. */
+export const POSTER_W = 0.27;
+export const POSTER_H = 0.4;
+export const POSTER_Y = 0.3;
 const NO_DOORS: { side: number; z: number }[] = [];
 // a mouse step bigger than this that comes out of nowhere is taken for Chrome's bogus pointer-lock jump
 const FPS_SPIKE = 260;
@@ -273,8 +277,8 @@ uniform mat3 uCamRot;
 uniform float uFocal;
 uniform vec2 uShift;
 uniform float uFront;
-uniform vec4 uDoors[8];
-uniform vec4 uDoorTint[8]; // rgb, a: 0 plain, 1 portal, 2 dressed (the door layer draws the leaves)
+uniform vec4 uDoors[10];
+uniform vec4 uDoorTint[10]; // rgb, a: 0 plain, 1 portal, 2 dressed (the door layer draws the leaves), 3 poster
 uniform int uDoorCount;
 uniform vec2 uDoorSize;
 uniform float uLights;
@@ -737,7 +741,7 @@ void paintImpacts(inout vec4 color, inout float energy, vec3 h, vec2 foot) {
 // uDoors[i] = (side, centre z, open 0..1, glow 0..1).
 void paintDoors(inout vec4 color, inout float energy, vec3 h, int face, float plane, vec2 foot) {
   float px = max(max(foot.x, foot.y), 1e-4);
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 10; i++) {
     if (i >= uDoorCount) break;
     vec4 dr = uDoors[i];
     float open = dr.z;
@@ -763,6 +767,28 @@ void paintDoors(inout vec4 color, inout float energy, vec3 h, int face, float pl
         float spill = exp(-fromWall * 4.0) * smoothstep(0.18, -0.06, along) * (0.45 + 0.2 * glow) * breath;
         over(color, tint, spill * 0.7 * uFps);
         energy += spill * 0.55 * uFps;
+      }
+      continue;
+    }
+    if (uDoorTint[i].a > 2.5) {
+      // a framed poster (drawn by the door layer): the room adds its picture light, a warm pool
+      // washing down the wall round the frame, and a faint spill on the floor when it's aimed at
+      float pw = 0.135;
+      if (face == 0 && sign(plane) == dr.x) {
+        float u = h.z - dr.y;
+        float v = h.y + 0.5;
+        float e = max(abs(u) - pw, max(0.3 - v, v - 0.7));
+        float wash = exp(-max(e, 0.0) / 0.055) * (0.1 + 0.3 * glow);
+        float spread = 0.07 + (0.76 - v) * 0.38;
+        float cone = exp(-(u * u) / (spread * spread)) * smoothstep(0.78, 0.73, v) * smoothstep(0.0, 0.6, v);
+        float amount = (wash + cone * 0.085) * uFps;
+        over(color, mix(vec3(1.0, 0.93, 0.82), tint, 0.3), amount);
+        energy += amount * 0.45;
+      } else if (face == 1 && plane < 0.0) {
+        float fromWall = 0.5 * uAspect - dr.x * h.x;
+        float spill = exp(-fromWall * 6.0) * smoothstep(0.14, -0.04, abs(h.z - dr.y) - pw) * (0.05 + 0.2 * glow) * uFps;
+        over(color, mix(vec3(1.0, 0.93, 0.82), tint, 0.5), spill);
+        energy += spill * 0.4;
       }
       continue;
     }
@@ -1445,7 +1471,11 @@ export const GridScan = ({
       const side = Math.sign(hit.x);
       for (let i = 0; i < s.doors.length; i++) {
         const door = s.doors[i];
-        if (door.side === side && Math.abs(hit.z - door.z) < DOOR_W / 2 && hit.y + 0.5 < DOOR_H) return i;
+        if (door.side !== side) continue;
+        const up = hit.y + 0.5;
+        if (door.poster) {
+          if (Math.abs(hit.z - door.z) < POSTER_W / 2 + 0.02 && up > POSTER_Y - 0.02 && up < POSTER_Y + POSTER_H + 0.02) return i;
+        } else if (Math.abs(hit.z - door.z) < DOOR_W / 2 && up < DOOR_H) return i;
       }
       return -1;
     };
@@ -1463,7 +1493,7 @@ export const GridScan = ({
         doorGlow[i] += ((aimDoor === i ? 1 : 0) - doorGlow[i]) * (1 - Math.exp(-dt * 10));
         doorData.set([door.side, door.z, doorOpen[i], doorGlow[i]], i * 4);
         const tint = door.color ? parse(door.color) : parse(s.scanColor);
-        doorTint.set([tint[0], tint[1], tint[2], door.portal ? 1 : door.dressed ? 2 : 0], i * 4);
+        doorTint.set([tint[0], tint[1], tint[2], door.portal ? 1 : door.poster ? 3 : door.dressed ? 2 : 0], i * 4);
       }
     };
 

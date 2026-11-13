@@ -1,10 +1,9 @@
 /**
- * Doors in the first-person grid room (home page → Play).
+ * What hangs on the walls of the first-person grid room (home page → Play).
  *
- * Add, remove or reorder entries here: each one becomes a door on the left or right wall with
- * a sign above it. Walk up, aim at it and click (or press E): the door slides open and the
- * project card appears. `href` starting with "/" opens a page of this site, anything else opens
- * in a new tab. Up to 4 doors per wall fit comfortably.
+ * Add, remove or reorder entries here: each one becomes a framed poster on the left or right
+ * wall. Walk up, aim at it and click (or press E): the project card appears. `href` starting with "/" opens a page of this site, anything else opens
+ * in a new tab. Up to 5 per wall fit comfortably.
  *
  * `theme` dresses the door (frame, light and particles, see room/DoorsLayer.tsx) in `color`.
  * The 'portal' theme is a nether portal you walk into instead of opening.
@@ -25,6 +24,8 @@ export type RoomDoor = {
   stack?: string[];
   href?: string;
   cta?: string;
+  /** a screenshot shown on the wall poster (public/posters); without one the poster is typographic */
+  image?: string;
 };
 
 export const ROOM_DOORS: RoomDoor[] = [
@@ -49,6 +50,7 @@ export const ROOM_DOORS: RoomDoor[] = [
       'Motion-led showreel site with a 3D statue you can orbit, a cylindrical video carousel and GSAP choreography.',
     stack: ['Next.js', 'GSAP', 'Three.js', 'Lenis'],
     href: '/creator',
+    image: '/posters/creator.jpg',
   },
   {
     id: 'bored',
@@ -61,6 +63,7 @@ export const ROOM_DOORS: RoomDoor[] = [
       'Movie, TV and anime discovery with category browsing, watchlist, continue-watching and a liquid-glass UI.',
     stack: ['Next.js', 'TMDB', 'Clerk', 'MongoDB'],
     href: '/Bored',
+    image: '/posters/bored.jpg',
   },
   {
     id: 'developer',
@@ -72,6 +75,34 @@ export const ROOM_DOORS: RoomDoor[] = [
     description: 'A physics-driven ID badge (Rapier) beside an interactive resume shell that streams its answers.',
     stack: ['React Three Fiber', 'Rapier', 'TypeScript'],
     href: '/developer',
+    image: '/posters/developer.jpg',
+  },
+  {
+    id: 'moon',
+    side: 'left',
+    theme: 'developer',
+    color: '#f5b83d',
+    tag: 'Experiment',
+    title: 'Live From the Moon',
+    description:
+      'Neural-network pilots trained with PPO on LunarLander, flying live in your browser. One reward rule taught a rocket to hover forever instead of landing.',
+    stack: ['Python', 'PPO', 'Gymnasium', 'Web'],
+    href: 'https://live-from-the-moon.vercel.app',
+    cta: 'Watch it fly',
+    image: '/posters/moon.jpg',
+  },
+  {
+    id: 'cine',
+    side: 'right',
+    theme: 'bored',
+    color: '#b68cff',
+    tag: 'Project',
+    title: 'CINÉ',
+    description: 'Cinema booking where you see the view from your seat before you book: a 3D hall, showtimes and seat picking.',
+    stack: ['Three.js', 'React', '3D'],
+    href: 'https://3d-cinema-booking.vercel.app/',
+    cta: 'Pick a seat',
+    image: '/posters/cine.jpg',
   },
   {
     id: 'anand',
@@ -85,6 +116,7 @@ export const ROOM_DOORS: RoomDoor[] = [
     stack: ['Next.js', 'Tailwind', 'Vercel'],
     href: 'https://dad-boph-eight.vercel.app/',
     cta: 'Visit the shop',
+    image: '/posters/anand.jpg',
   },
   {
     id: 'github',
@@ -96,6 +128,7 @@ export const ROOM_DOORS: RoomDoor[] = [
     description: 'Source for this portfolio and everything else I build.',
     href: 'https://github.com/vidanttt',
     cta: 'Open GitHub',
+    image: '/posters/github.jpg',
   },
   {
     id: 'instagram',
@@ -141,6 +174,11 @@ export function doorLayout(doors: RoomDoor[]) {
       color: door.color,
       portal: door.theme === 'portal',
       dressed: true,
+      // everything but the portal hangs on the wall as a framed poster
+      poster: door.theme !== 'portal',
+      title: door.title,
+      tag: door.tag,
+      image: door.image,
     };
   });
 }

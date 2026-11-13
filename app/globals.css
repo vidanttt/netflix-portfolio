@@ -1319,3 +1319,21 @@ html[data-room-fps] .global-music { opacity: 0 !important; pointer-events: none 
 /* the opening title's black cover, until the page knows whether to play it */
 .intro-cover { position: fixed; inset: 0; z-index: 200; background: #000; }
 html[data-intro-seen] .intro-cover { display: none; }
+
+/* ── live cursors of other visitors (components/LiveCursors.tsx) ── */
+.live-cursors { position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; }
+.live-cursor {
+  position: absolute; left: 0; top: 0; margin: -3px 0 0 -4px; will-change: transform;
+  color: hsl(var(--hue) 90% 68%);
+  filter: drop-shadow(0 0 6px hsl(var(--hue) 90% 60% / 0.55));
+  animation: live-cursor-in 0.35s ease-out both;
+}
+@keyframes live-cursor-in { from { opacity: 0; } to { opacity: 1; } }
+.live-count {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 40; pointer-events: none;
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+  font-size: 12px; letter-spacing: 0.02em; color: rgba(255, 255, 255, 0.78);
+  background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px);
+}
+.live-count i { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+@media (prefers-reduced-motion: reduce) { .live-cursor { animation: none; } }
